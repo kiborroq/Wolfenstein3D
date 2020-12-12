@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/12 13:16:01 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/12 13:19:21 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -145,11 +145,15 @@ int main(void)
             draw_start = 0;
         if ((draw_start = height / 2 + HEIGHT / 2) > HEIGHT - 1)
             draw_start = HEIGHT - 1;
+        
+        //Draw in window
         while (draw_start < draw_end + 1)
         {
             mlx_pixel_put(mlx_ptr, win_ptr, x_on_camera_plane, draw_start, 0123123123);
             draw_start++;
         }
+
+        //iter to next ray or to next camera plane point
         x_on_camera_plane++;
     }
     return 0;
