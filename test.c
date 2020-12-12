@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/11 16:21:23 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/12 13:16:01 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,10 +63,10 @@ int main(void)
     view.cam_plane.y = 0.66;
 
     t_ray ray;
-    int d;
-    d = 0;
+    int x_on_camera_plane;
+    x_on_camera_plane = 0;
     double pos_on_plane;
-    while (d < WIDTH)
+    while (x_on_camera_plane < WIDTH)
     {
         //set current ray (direction, position, ratio)
         pos_on_plane = 2 * d / double(WIDTH) - 1;
@@ -139,9 +139,18 @@ int main(void)
         height = (int)(HEIGHT / ray.dist);
         
         //Define pixels of window for color filling 
-        
-        
-        d++;
+        int draw_start;
+        int draw_end;
+        if ((draw_start = -height / 2 + HEIGHT / 2) < 0)
+            draw_start = 0;
+        if ((draw_start = height / 2 + HEIGHT / 2) > HEIGHT - 1)
+            draw_start = HEIGHT - 1;
+        while (draw_start < draw_end + 1)
+        {
+            mlx_pixel_put(mlx_ptr, win_ptr, x_on_camera_plane, draw_start, 0123123123);
+            draw_start++;
+        }
+        x_on_camera_plane++;
     }
     return 0;
 }
