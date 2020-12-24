@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/24 09:36:49 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/24 11:23:52 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,8 +23,8 @@
 #define TURN_LEFT 65361
 #define TURN_RIGHT 65363 
 
-#define MOVE_SPEED 0.1
-#define TURN_SPEED 0.1
+#define MOVE_SPEED 0.05
+#define TURN_SPEED 0.05
 
 #include "stdio.h"
 #include "stdlib.h"
@@ -260,22 +260,34 @@ void clear_map(int **map, int height)
 
 void move_for_back(t_inf *inf, double dir)
 {
-    inf->view.pos.x += (inf->view.dir.x * MOVE_SPEED) * dir;
-    if (inf->map[(int)inf->view.pos.x][(int)inf->view.pos.y])
-        inf->view.pos.x -= (inf->view.dir.x * MOVE_SPEED) * dir;
-    inf->view.pos.y += (inf->view.dir.y * MOVE_SPEED) * dir;
-    if (inf->map[(int)inf->view.pos.x][(int)inf->view.pos.y])
-        inf->view.pos.y -= (inf->view.dir.y * MOVE_SPEED) * dir;
+    double delta;
+
+    delta = inf->view.dir.x * MOVE_SPEED * dir;
+    if (inf->map[(int)(inf->view.pos.x + delta * 2)][(int)inf->view.pos.y] == 0)
+    {
+        inf->view.pos.x += delta;
+    }
+    delta = inf->view.dir.y * MOVE_SPEED * dir;
+    if (inf->map[(int)inf->view.pos.x][(int)(inf->view.pos.y + delta * 2)] == 0)
+    {
+        inf->view.pos.y += delta;
+    }
 }
 
 void move_left_right(t_inf *inf, double dir)
 {
-    inf->view.pos.x -= (inf->view.dir.y * MOVE_SPEED) * dir;
-    if (inf->map[(int)inf->view.pos.x][(int)inf->view.pos.y])
-        inf->view.pos.x += (inf->view.dir.y * MOVE_SPEED) * dir;
-    inf->view.pos.y += (inf->view.dir.x * MOVE_SPEED) * dir;
-    if (inf->map[(int)inf->view.pos.x][(int)inf->view.pos.y])
-        inf->view.pos.y -= (inf->view.dir.x * MOVE_SPEED) * dir;
+    double delta;
+
+    delta = inf->view.dir.y * MOVE_SPEED * dir;
+    if (inf->map[(int)(inf->view.pos.x - delta * 2)][(int)inf->view.pos.y] == 0)
+    {
+        inf->view.pos.x -= delta;
+    }
+    delta = inf->view.dir.x * MOVE_SPEED * dir;
+    if (inf->map[(int)inf->view.pos.x][(int)(inf->view.pos.y + delta * 2)] == 0)
+    {
+        inf->view.pos.y += delta;
+    }
 }
 
 void turn_left_right(t_inf *inf, double turn_sin, double turn_cos)
@@ -283,10 +295,10 @@ void turn_left_right(t_inf *inf, double turn_sin, double turn_cos)
     double old_x;
 
     old_x = inf->view.dir.x;
-    inf->view.dir.x =   inf->view.dir.x * turn_cos -
-                        inf->view.dir.y * turn_sin;
-    inf->view.dir.y =   inf->view.dir.y * turn_cos +
-                        old_x * turn_sin;
+    inf->view.dir.x =       inf->view.dir.x * turn_cos -
+                            inf->view.dir.y * turn_sin;
+    inf->view.dir.y =       inf->view.dir.y * turn_cos +
+                            old_x * turn_sin;
     old_x = inf->view.cam_plane.x;
     inf->view.cam_plane.x = inf->view.cam_plane.x * turn_cos -
                             inf->view.cam_plane.y * turn_sin;
@@ -317,6 +329,7 @@ int event_nadling(t_inf *inf)
 {
     raycast(inf);
     mlx_put_image_to_window(inf->mlx_ptr, inf->win_ptr, inf->img.img_ptr, 0 , 0);
+    mlx_do_sync(inf->mlx_ptr);
     if (inf->event.move_forawrd == 1)
         move_for_back(inf, 1.0);
     if (inf->event.move_backword == 1)
@@ -366,9 +379,9 @@ int key_press(int event_key, t_inf *inf)
         inf->event.turn_right = 1;
     else if (event_key == EXIT)
         close_game(inf);
-    printf("forward=%d backword=%d left=%d right=%d rot_left=%d rot_right=%d\n",
-            inf->event.move_forawrd, inf->event.move_backword, inf->event.move_left, inf->event.move_right, inf->event.turn_left, inf->event.turn_right);
-    printf("pos_x=%.3f pos_y=%.3f\n\n", inf->view.pos.x, inf->view.pos.y);
+    // printf("forward=%d backword=%d left=%d right=%d rot_left=%d rot_right=%d\n",
+    //         inf->event.move_forawrd, inf->event.move_backword, inf->event.move_left, inf->event.move_right, inf->event.turn_left, inf->event.turn_right);
+    // printf("pos_x=%.3f pos_y=%.3f\n\n", inf->view.pos.x, inf->view.pos.y);
     return (0);
 }
 
