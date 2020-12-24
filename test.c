@@ -3,17 +3,17 @@
 /*                                                        :::      ::::::::   */
 /*   test.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kiborroq@student.42.fr <kiborroq>          +#+  +:+       +#+        */
+/*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/23 01:18:43 by kiborroq@st      ###   ########.fr       */
+/*   Updated: 2020/12/24 09:36:49 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#define WIDTH 800
-#define HEIGHT 600
+#define WIDTH 1800
+#define HEIGHT 1000
 #define MAP_HEIGHT 10
-#define MAP_WIDTH 10
+#define MAP_WIDTH 11
 
 #define EXIT 65307
 #define MOVE_FORWARD 119
@@ -23,8 +23,8 @@
 #define TURN_LEFT 65361
 #define TURN_RIGHT 65363 
 
-#define MOVE_SPEED 0.10
-#define TURN_SPEED 0.10
+#define MOVE_SPEED 0.1
+#define TURN_SPEED 0.1
 
 #include "stdio.h"
 #include "stdlib.h"
@@ -96,6 +96,7 @@ typedef struct  s_inf
     void            *mlx_ptr;
     void            *win_ptr;
     t_image         img;
+    t_image         img_buf;
     int             **map;
     t_event          event;
 }                   t_inf;
@@ -110,11 +111,6 @@ void    my_mlx_pixel_put(t_image *img, int x, int y, int color)
 
 int    raycast(t_inf *inf)
 {
-    inf->img.img_ptr = mlx_new_image(inf->mlx_ptr, WIDTH, HEIGHT);
-    inf->img.data = mlx_get_data_addr( inf->img.img_ptr,
-                                        &inf->img.bpp,
-                                        &inf->img.size_line,
-                                        &inf->img.endian);
     int x_on_camera_plane = 0;
     double pos_on_plane = 0;
     while (x_on_camera_plane < WIDTH)
@@ -175,7 +171,7 @@ int    raycast(t_inf *inf)
                 inf->ray.pos.y += step.y;
                 hit_side = 0;
             }
-            if (inf->map[inf->ray.pos.y][inf->ray.pos.x])
+            if (inf->map[inf->ray.pos.x][inf->ray.pos.y])
                 hit = 1;
         }
 
@@ -265,20 +261,20 @@ void clear_map(int **map, int height)
 void move_for_back(t_inf *inf, double dir)
 {
     inf->view.pos.x += (inf->view.dir.x * MOVE_SPEED) * dir;
-    if (inf->map[(int)inf->view.pos.y][(int)inf->view.pos.x])
+    if (inf->map[(int)inf->view.pos.x][(int)inf->view.pos.y])
         inf->view.pos.x -= (inf->view.dir.x * MOVE_SPEED) * dir;
     inf->view.pos.y += (inf->view.dir.y * MOVE_SPEED) * dir;
-    if (inf->map[(int)inf->view.pos.y][(int)inf->view.pos.x])
+    if (inf->map[(int)inf->view.pos.x][(int)inf->view.pos.y])
         inf->view.pos.y -= (inf->view.dir.y * MOVE_SPEED) * dir;
 }
 
 void move_left_right(t_inf *inf, double dir)
 {
     inf->view.pos.x -= (inf->view.dir.y * MOVE_SPEED) * dir;
-    if (inf->map[(int)inf->view.pos.y][(int)inf->view.pos.x])
+    if (inf->map[(int)inf->view.pos.x][(int)inf->view.pos.y])
         inf->view.pos.x += (inf->view.dir.y * MOVE_SPEED) * dir;
     inf->view.pos.y += (inf->view.dir.x * MOVE_SPEED) * dir;
-    if (inf->map[(int)inf->view.pos.y][(int)inf->view.pos.x])
+    if (inf->map[(int)inf->view.pos.x][(int)inf->view.pos.y])
         inf->view.pos.y -= (inf->view.dir.x * MOVE_SPEED) * dir;
 }
 
@@ -308,22 +304,32 @@ int close_game(t_inf *inf)
     return (0);
 }
 
+void change_img_ptrs(t_inf *inf)
+{
+    t_image tmp;
+
+    tmp = inf->img;
+    inf->img = inf->img_buf;
+    inf->img_buf = tmp;
+}
+
 int event_nadling(t_inf *inf)
 {
-    if (inf->event.move_forawrd == 1)
-        move_for_back(inf, 1.0);
-    else if (inf->event.move_backword == 1)
-        move_for_back(inf, -1.0);
-    else if (inf->event.move_left == 1)
-        move_left_right(inf, 1.0);
-    else if (inf->event.move_right == 1)
-        move_left_right(inf, -1.0);
-    else if (inf->event.turn_left == 1)
-        turn_left_right(inf, inf->turn.sin_pozotive, inf->turn.cos_pozitive);
-    else if (inf->event.turn_right == 1)
-        turn_left_right(inf, inf->turn.sin_negative, inf->turn.cos_negative);
     raycast(inf);
     mlx_put_image_to_window(inf->mlx_ptr, inf->win_ptr, inf->img.img_ptr, 0 , 0);
+    if (inf->event.move_forawrd == 1)
+        move_for_back(inf, 1.0);
+    if (inf->event.move_backword == 1)
+        move_for_back(inf, -1.0);
+    if (inf->event.move_left == 1)
+        move_left_right(inf, 1.0);
+    if (inf->event.move_right == 1)
+        move_left_right(inf, -1.0);
+    if (inf->event.turn_left == 1)
+        turn_left_right(inf, inf->turn.sin_pozotive, inf->turn.cos_pozitive);
+    if (inf->event.turn_right == 1)
+        turn_left_right(inf, inf->turn.sin_negative, inf->turn.cos_negative);
+    change_img_ptrs(inf);
     return (0);
 }
 
@@ -347,9 +353,9 @@ int key_release(int event_key, t_inf *inf)
 int key_press(int event_key, t_inf *inf)
 {
     if (event_key == MOVE_FORWARD)
-       inf->event.move_forawrd = 1;
+        inf->event.move_forawrd = 1;
     else if (event_key == MOVE_BACKWARD)
-       inf->event.move_backword = 1;
+        inf->event.move_backword = 1;
     else if (event_key == MOVE_LEFT)
         inf->event.move_left = 1;
     else if (event_key == MOVE_RIGHT)
@@ -360,6 +366,9 @@ int key_press(int event_key, t_inf *inf)
         inf->event.turn_right = 1;
     else if (event_key == EXIT)
         close_game(inf);
+    printf("forward=%d backword=%d left=%d right=%d rot_left=%d rot_right=%d\n",
+            inf->event.move_forawrd, inf->event.move_backword, inf->event.move_left, inf->event.move_right, inf->event.turn_left, inf->event.turn_right);
+    printf("pos_x=%.3f pos_y=%.3f\n\n", inf->view.pos.x, inf->view.pos.y);
     return (0);
 }
 
@@ -373,29 +382,41 @@ int main(void)
     inf->mlx_ptr = mlx_init();
     inf->win_ptr = mlx_new_window(inf->mlx_ptr, WIDTH, HEIGHT, "Test");
 
+    inf->img.img_ptr = mlx_new_image(inf->mlx_ptr, WIDTH, HEIGHT);
+    inf->img.data = mlx_get_data_addr( inf->img.img_ptr,
+                                        &inf->img.bpp,
+                                        &inf->img.size_line,
+                                        &inf->img.endian);
+                                        
+    inf->img_buf.img_ptr = mlx_new_image(inf->mlx_ptr, WIDTH, HEIGHT);
+    inf->img_buf.data = mlx_get_data_addr( inf->img_buf.img_ptr,
+                                        &inf->img_buf.bpp,
+                                        &inf->img_buf.size_line,
+                                        &inf->img_buf.endian);
+
     int	map[MAP_HEIGHT][MAP_WIDTH] =
     {
-        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-        {1, 0, 0, 0, 0, 0, 0, 0, 1, 1},
-        {1, 1, 0, 0, 0, 0, 0, 1, 0, 1},
-        {1, 1, 1, 1, 0, 0, 0, 0, 0, 1},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 1, 0, 0, 0, 1, 0, 0, 0, 1},
-        {1, 1, 1, 0, 0, 0, 0, 0, 0, 1},
-        {1, 1, 1, 0, 0, 0, 0, 0, 0, 1},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+        {1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1},
+        {1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1},
+        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
     };
 
     inf->map = fill_map(map);
 
     t_view view;
-    view.dir.x = -1;
+    view.dir.x = 1;
     view.dir.y = 0.0;
     view.pos.x = 8.9;
     view.pos.y = 8.9;
     view.cam_plane.x = 0;
-    view.cam_plane.y = 0.66;
+    view.cam_plane.y = -0.66;
 
     inf->view = view;
 
@@ -412,17 +433,15 @@ int main(void)
     inf->event.turn_right = 0;
 
     //Raycast, draw and events handling
-    raycast(inf);
-    mlx_put_image_to_window(inf->mlx_ptr, inf->win_ptr, inf->img.img_ptr, 0 , 0);
-    
+    // raycast(inf);
+    // mlx_put_image_to_window(inf->mlx_ptr, inf->win_ptr, inf->img.img_ptr, 0 , 0);
+	
+    mlx_hook(inf->win_ptr, 17, 1L << 17, close_game, inf);
 	mlx_hook(inf->win_ptr, 2, 1L << 0, key_press, inf);
-	mlx_hook(inf->win_ptr, 3, 1L << 1, key_release, inf);
     mlx_loop_hook(inf->mlx_ptr, event_nadling, inf);
-	mlx_hook(inf->win_ptr, 17, 1L << 17, close_game, inf);
+	mlx_hook(inf->win_ptr, 3, 1L << 1, key_release, inf);
     mlx_loop(inf->mlx_ptr);
 
-    //Destroy game
-    close_game(inf);
     return 0;
 }
 
