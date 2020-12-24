@@ -3,17 +3,19 @@
 /*                                                        :::      ::::::::   */
 /*   test.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
+/*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/24 11:23:52 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/24 16:17:26 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#define WIDTH 1800
+#define WIDTH 1820
 #define HEIGHT 1000
 #define MAP_HEIGHT 10
 #define MAP_WIDTH 11
+#define TEXTURE_HEIGHT 64
+#define TEXTURE_WIDTH 64
 
 #define EXIT 65307
 #define MOVE_FORWARD 119
@@ -23,8 +25,8 @@
 #define TURN_LEFT 65361
 #define TURN_RIGHT 65363 
 
-#define MOVE_SPEED 0.05
-#define TURN_SPEED 0.05
+#define MOVE_SPEED 0.03
+#define TURN_SPEED 0.03
 
 #include "stdio.h"
 #include "stdlib.h"
@@ -86,7 +88,17 @@ typedef struct			s_image
 	int					endian;
 	void				*img_ptr;
 	char				*data;
+    int                 width;
+    int                 height;
 }						t_image;
+
+typedef struct s_texture
+{
+    t_image n_side;
+    t_image s_side;
+    t_image e_side;
+    t_image w_side;    
+}               t_texture;
 
 typedef struct  s_inf
 {
@@ -98,7 +110,9 @@ typedef struct  s_inf
     t_image         img;
     t_image         img_buf;
     int             **map;
-    t_event          event;
+    t_event         event;
+    t_texture       texture;
+    t_image         test;
 }                   t_inf;
 
 void    my_mlx_pixel_put(t_image *img, int x, int y, int color)
@@ -107,6 +121,37 @@ void    my_mlx_pixel_put(t_image *img, int x, int y, int color)
 
     dst = img->data + (y * img->size_line + x * (img->bpp / 8));
     *(unsigned int*)dst = color;
+}
+
+double get_wall_x(t_inf *inf, int hit_side)
+{
+    double wall_x;
+    
+    if (hit_side)
+        wall_x = inf->view.pos.x + inf->ray.dist * inf->ray.dir.y;
+    else
+        wall_x = inf->view.pos.y + inf->ray.dist * inf->ray.dir.x;
+    wall_x -= floor(wall_x);
+    return (wall_x);
+}
+
+int get_texture_x(t_inf *inf, int hit_side, double wall_x)
+{
+    int texture_x;
+
+    texture_x = (int)(wall_x * TEXTURE_WIDTH);
+    if ((hit_side && inf->ray.dir.y < 0) || (!hit_side && inf->ray.dir.x > 0))
+        texture_x = TEXTURE_WIDTH - texture_x - 1;
+    return (texture_x);
+}
+
+void draw_wall(t_inf *inf, int hit_side)
+{
+    double  wall_x;
+    int     texture_x;
+
+    wall_x = get_wall_x(inf, hit_side);
+    texture_x = get_texture_x(inf, hit_side, wall_x);
 }
 
 int    raycast(t_inf *inf)
@@ -329,7 +374,6 @@ int event_nadling(t_inf *inf)
 {
     raycast(inf);
     mlx_put_image_to_window(inf->mlx_ptr, inf->win_ptr, inf->img.img_ptr, 0 , 0);
-    mlx_do_sync(inf->mlx_ptr);
     if (inf->event.move_forawrd == 1)
         move_for_back(inf, 1.0);
     if (inf->event.move_backword == 1)
@@ -400,7 +444,7 @@ int main(void)
                                         &inf->img.bpp,
                                         &inf->img.size_line,
                                         &inf->img.endian);
-                                        
+
     inf->img_buf.img_ptr = mlx_new_image(inf->mlx_ptr, WIDTH, HEIGHT);
     inf->img_buf.data = mlx_get_data_addr( inf->img_buf.img_ptr,
                                         &inf->img_buf.bpp,
@@ -445,10 +489,15 @@ int main(void)
     inf->event.turn_left = 0;
     inf->event.turn_right = 0;
 
-    //Raycast, draw and events handling
-    // raycast(inf);
-    // mlx_put_image_to_window(inf->mlx_ptr, inf->win_ptr, inf->img.img_ptr, 0 , 0);
+    int width = TEXTURE_WIDTH;
+    int height = TEXTURE_HEIGHT;
+    inf->test.img_ptr = mlx_xpm_file_to_image(inf->mlx_ptr, "east.xpm", &width, &height);
+    inf->test.data = mlx_get_data_addr(inf->test.img_ptr, &inf->img.bpp, &inf->img.size_line, &inf->img.endian);
 	
+    // printf("width=%d, height=%d\n", width, height);
+
+    // mlx_put_image_to_window(inf->mlx_ptr, inf->win_ptr, inf->test.img_ptr, 0, 0);
+    
     mlx_hook(inf->win_ptr, 17, 1L << 17, close_game, inf);
 	mlx_hook(inf->win_ptr, 2, 1L << 0, key_press, inf);
     mlx_loop_hook(inf->mlx_ptr, event_nadling, inf);
