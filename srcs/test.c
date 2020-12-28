@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   test.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
+/*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/28 16:08:40 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/28 18:40:30 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@
 #include "unistd.h"
 #include "math.h"
 #include "../minilibx/mlx.h"
+#include "../libft/libft.h"
 
 typedef struct s_color
 {
@@ -44,23 +45,29 @@ typedef struct s_color
 }              t_color;
 
 
-typedef struct  s_point_double
+typedef struct  s_point_d
 {
     double x;
     double y;
-}               t_point_double;
+}               t_point_d;
 
-typedef struct  s_point_int
+typedef struct  s_point_i
 {
     int x;
     int y;
-}               t_point_int;
+}               t_point_i;
+
+typedef struct  s_sprite
+{
+    t_point_i   pos;
+    double      dist;
+}               t_sprite;
 
 typedef struct      s_view
 {
-    t_point_double  pos;
-    t_point_double  dir;
-    t_point_double  cam_plane;
+    t_point_d  pos;
+    t_point_d  dir;
+    t_point_d  cam_plane;
 }                   t_view;
 
 typedef struct s_turn_sin_cos
@@ -83,11 +90,11 @@ typedef struct s_event
 
 typedef struct      s_ray
 {
-    t_point_double  dir;
-    t_point_int     pos;
-    t_point_double  cur_dist;
-    t_point_double  delt_dist;
-    t_point_int     step;
+    t_point_d  dir;
+    t_point_i     pos;
+    t_point_d  cur_dist;
+    t_point_d  delt_dist;
+    t_point_i     step;
     double          dist;
     int             hit_side;
     int             wall_start;
@@ -123,21 +130,24 @@ typedef struct  s_inf
     void            *mlx_ptr;
     void            *win_ptr;
     t_image         img;
-    t_image         img_buf;
+    // t_image         img_buf;
     int             **map;
     t_event         event;
     t_textr         textr;
     t_image         test;
     t_color         color;
     t_image         curr_textr;
+    
 }                   t_inf;
 
 void    put_color(t_image *img, int x, int y, int color)
 {
-    char    *tmp;
+    img->data[y * img->size_line / 4 + x] = color;
+}
 
-    tmp = (char *)img->data + (y * img->size_line + x * (img->bpp / 8));
-    *(int *)tmp = color;
+int     get_color(t_image *img, int x, int y)
+{
+    return (img->data[y * img->size_line / 4 + x]);
 }
 
 void set_curr_textr(t_inf *inf)
@@ -189,21 +199,23 @@ void draw_wall(t_inf *inf, int screen_x)
     double          wall_x;
     int             textr_x;
     double          textr_step;
-    double          textr_y_start;
+    double          textr_y_pos;
     int             textr_y;
     int             screen_y;
+    int             color;
 
     set_curr_textr(inf);
     wall_x = get_wall_x(inf);
     textr_x = get_textr_x(inf, wall_x);
     textr_step = 1.0 * inf->curr_textr.height / inf->ray.wall_height;
-    textr_y_start = (inf->ray.wall_start - HEIGHT / 2 + inf->ray.wall_height / 2) * textr_step;
+    textr_y_pos = (inf->ray.wall_start - HEIGHT / 2 + inf->ray.wall_height / 2) * textr_step;
     screen_y = inf->ray.wall_start;
     while (screen_y < inf->ray.wall_end)
     {
-        textr_y = (int)textr_y_start & (inf->curr_textr.height - 1);
-        inf->img.data[screen_y * inf->img.size_line / 4 + screen_x] = inf->curr_textr.data[textr_y * inf->curr_textr.size_line / 4 + textr_x];
-        textr_y_start += textr_step;
+        textr_y = (int)textr_y_pos & (inf->curr_textr.height - 1);
+        color = get_color(&inf->curr_textr, textr_x, textr_y);
+        put_color(&inf->img, screen_x, screen_y, color);
+        textr_y_pos += textr_step;
         screen_y++;
     }
 }
