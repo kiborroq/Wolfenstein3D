@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/29 23:48:47 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/30 01:02:59 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -430,6 +430,25 @@ void swap_sprs(t_spr *a, t_spr *b)
 	b->abs_pos.y = tmp.abs_pos.y;
 }
 
+
+void print_sprs(t_spr *sprs, int num)
+{
+	int i;
+	
+	i = 0;
+	while (i < num)
+	{
+		ft_putnbr_fd((sprs + i)->abs_pos.x, 1);
+		ft_putstr_fd(" ", 1);
+		ft_putnbr_fd(sprs[i].abs_pos.y, 1);
+		ft_putstr_fd(" ", 1);
+		ft_putnbr_fd((int)sprs[i].dist, 1);
+		ft_putstr_fd("\n", 1);
+		i++;
+	}
+	ft_putstr_fd("\n\n", 1);
+}
+
 void sort_sprs(t_spr *sprs, int num_sprs)
 {
 	int i;
@@ -440,10 +459,10 @@ void sort_sprs(t_spr *sprs, int num_sprs)
 	while (i + 1 < num_sprs)
 	{
 		j = 0;
-		while (j + 1 < num_sprs - j)
+		while (j + 1 < num_sprs)
 		{
-			if (sprs[i].dist < sprs[i + 1].dist)
-				swap_sprs(&sprs[i], &sprs[i + 1]);
+			if (sprs[j].dist < sprs[j + 1].dist)
+				swap_sprs(&sprs[j], &sprs[j + 1]);
 			j++;
 		}
 		i++;
@@ -512,23 +531,6 @@ void draw_curr_spr(t_spr *spr, t_image *spr_img, t_inf *inf)
 	}
 }
 
-void print_sprs(t_spr *sprs, int num)
-{
-	int i;
-	
-	i = 0;
-	while (i < num)
-	{
-		ft_putnbr_fd((sprs + i)->abs_pos.x, 1);
-		ft_putstr_fd(" ", 1);
-		ft_putnbr_fd(sprs[i].abs_pos.y, 1);
-		ft_putstr_fd(" ", 1);
-		ft_putnbr_fd((int)sprs[i].dist, 1);
-		ft_putstr_fd("\n", 1);
-		i++;
-	}
-	ft_putstr_fd("\n\n", 1);
-}
 
 void draw_sprs(t_inf *inf)
 {
@@ -798,7 +800,7 @@ void init_bmp(t_bitmap *bmp, t_inf *inf)
     bmp->i_h.planes = 1;
     bmp->i_h.bpp = inf->img.bpp;
     bmp->i_h.compres = 0;
-    bmp->i_h.img_size = inf->img.width * inf->img.height;
+    bmp->i_h.img_size = 4 * inf->img.width * inf->img.height;
     bmp->i_h.hor_resol = inf->img.width;
     bmp->i_h.ver_resol = inf->img.height;
     bmp->i_h.color_used = 0;
@@ -810,19 +812,32 @@ void init_bmp(t_bitmap *bmp, t_inf *inf)
     bmp->data = inf->img.data;
 }
 
-void save_screen(t_inf *inf)
+void write_data(t_bitmap bmp, int sl, int fd)
 {
-	int fd;
-	t_bitmap bmp;
+    int y;
+    int x;
 
-	raycast(inf);
-	fd = open("screenshot.bpm", O_CREAT | O_RDWR);
-    bmp_init(&bmp, inf);
+    y = bmp.i_h.height - 1;
+	while (y >= 0)
+	{
+		x = 0;
+		while (x < bmp.i_h.width)
+		{
+			write(fd, &bmp.data[y * sl / 4 + x], 4);
+			x++;
+		}
+		y--;
+	}
+}
+
+void write_bmp(t_bitmap bmp, t_inf *inf, int fd)
+{
     write(fd, bmp.h.sign, 2);
     write(fd, &bmp.h.file_size, 4);
     write(fd, &bmp.h.res_byte, 2);
     write(fd, &bmp.h.res_byte, 2);
     write(fd, &bmp.h.offset, 4);
+    write(fd, &bmp.i_h.size, 4);
     write(fd, &bmp.i_h.width, 4);
     write(fd, &bmp.i_h.height, 4);
     write(fd, &bmp.i_h.planes, 2);
@@ -833,7 +848,18 @@ void save_screen(t_inf *inf)
     write(fd, &bmp.i_h.ver_resol, 4);
     write(fd, &bmp.i_h.color_used, 4);
     write(fd, &bmp.i_h.color_important, 4);
-    write(fd, bmp.data, bmp.i_h.img_size);
+    write_data(bmp, inf->img.sl, fd);
+}
+
+void save_screen(t_inf *inf)
+{
+	int fd;
+	t_bitmap bmp;
+
+	raycast(inf);
+	fd = open("screenshot.bmp", O_CREAT | O_RDWR);
+    init_bmp(&bmp, inf);
+    write_bmp(bmp, inf, fd);
 	close(fd);
 }
 
@@ -843,8 +869,9 @@ int main(int argc, char **argv)
     if (!(inf = (t_inf *)malloc(sizeof(t_inf))))
         return (0);
 
+    ft_putstr_fd(argv[1], 1);
+
     inf->mlx_ptr = mlx_init();
-    inf->win_ptr = mlx_new_window(inf->mlx_ptr, WIDTH, HEIGHT, "Test");
 
     if (add_textr(inf->mlx_ptr, &inf->textr.e_side, "../txtrs/east.xpm") == KO)
         close_game(inf);
@@ -858,6 +885,8 @@ int main(int argc, char **argv)
         close_game(inf);
 
     inf->img.img_ptr = mlx_new_image(inf->mlx_ptr, WIDTH, HEIGHT);
+    inf->img.height = HEIGHT;
+    inf->img.width = WIDTH;
     inf->img.data = (int *)mlx_get_data_addr(inf->img.img_ptr,
                                         &inf->img.bpp,
                                         &inf->img.sl,
@@ -871,12 +900,12 @@ int main(int argc, char **argv)
     int	map[MAP_HEIGHT][MAP_WIDTH] =
     {
         {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-        {1,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
-        {1,0,2,2,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,0,0,2,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
+        {1,0,2,2,0,0,0,0,2,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
         {1,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-        {1,0,2,2,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
-        {1,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,1,0,1,1,1},
-        {1,0,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1},
+        {1,0,2,0,0,2,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
+        {1,0,0,0,2,2,0,0,0,2,1,1,0,0,0,0,0,1,1,1,0,1,1,1},
+        {1,0,0,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1},
         {1,1,1,1,0,1,1,1,1,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1},
         {1,1,0,0,0,0,0,0,1,1,0,1,0,1,0,1,1,1,0,0,0,0,0,1},
         {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1},
@@ -901,10 +930,10 @@ int main(int argc, char **argv)
     
     t_view view;
     view.dir.x = 0.0;
-    view.dir.y = -1.0;
+    view.dir.y = 1.0;
     view.pos.x = 6.5;
-    view.pos.y = 1.5;
-    view.cam_plane.x = -0.66;
+    view.pos.y = 1.9;
+    view.cam_plane.x = 0.66;
     view.cam_plane.y = 0;
 
     inf->view = view;
@@ -926,6 +955,8 @@ int main(int argc, char **argv)
         save_screen(inf);
         close_game(inf);        
     }
+
+    inf->win_ptr = mlx_new_window(inf->mlx_ptr, WIDTH, HEIGHT, "Test");
 
     mlx_hook(inf->win_ptr, 17, 1L << 17, close_game, inf);
 	mlx_hook(inf->win_ptr, 2, 1L << 0, button_press, inf);
