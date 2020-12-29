@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/29 16:23:03 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/29 22:52:18 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,13 @@
 
 #define WALL 1
 #define SPRITE 2
+
+#define SIGNATURE "BM"
+#define RESREVED_BYTE 0
+#define SIZE_HEADER 14
+#define SIZE_INFO_HEADER 40
+#define OFFSET SIZE_HEADER + SIZE_INFO_HEADER + 4
+#define COMPRESSION 0
 
 #define COLORLESS -16777216
 
@@ -42,12 +49,44 @@
 #include "math.h"
 #include "../minilibx/mlx.h"
 #include "../libft/libft.h"
+#include "fcntl.h"
 
 typedef struct s_color
 {
     int ceil;
     int floor;
 }              t_color;
+
+typedef struct s_header
+{
+	char *sign;
+	int file_size;
+	int	res_byte1;
+	int res_byte2;
+}				t_header;
+
+typedef struct s_info_header
+{
+	int info_header_size;
+	int width;
+	int height;
+	int planes;
+	int bpp;
+	int compres;
+	int img_size;
+	int hor_resol;
+	int ver_resol;
+	int color_used;
+	int color_important;
+}				t_info_header;
+
+
+typedef struct	s_bitmap
+{
+	t_header header;
+	t_info_header info_header;
+	int	*data;
+}				t_bitmap;
 
 
 typedef struct  s_point_d
@@ -632,15 +671,6 @@ int close_game(t_inf *inf)
     return (0);
 }
 
-// void change_img_ptrs(t_inf *inf)
-// {
-//     t_image tmp;
-
-//     tmp = inf->img;
-//     inf->img = inf->img_buf;
-//     inf->img_buf = tmp;
-// }
-
 int event_nadling(t_inf *inf)
 {
     raycast(inf);
@@ -761,10 +791,39 @@ int add_textr(void *mlx_ptr, t_image *textr, char *filename)
     return (OK);
 }
 
-// void save_screen(t_inf *inf)
-// {
-    
-// }
+void init_bmp(t_bitmap *bmp, t_inf *inf)
+{
+	bmp->info_header.width = inf->img.width;
+	bmp->info_header.height = inf->img.height;
+	bmp->info_header.img_size = SIZE_INFO_HEADER;
+}
+
+void write_header(t_inf *inf, int fd)
+{
+	int header_elem;
+	
+	write(fd, SIGNATURE, 2);
+	header_elem = SIZE_HEADER + 4 * inf->img.height * inf->img.width;
+	write(fd, &header_elem, 4);
+	write(fd, &header_elem, 4);
+	header_elem = RESREVED_BYTE;
+	write(fd, &header_elem, 2);
+	write(fd, &header_elem, 2);
+}
+
+void save_screen(t_inf *inf)
+{
+	int fd;
+	t_bitmap bmp;
+
+	fd = open("screenshot.bpm", O_CREAT | O_RDWR);
+	bmp_init(&bmp, inf);
+	write_header(inf, fd);
+	write_info_header(inf, fd);
+	raycast(inf);
+	write_data(inf, fd);
+	close(fd);
+}
 
 int main(void)
 {
@@ -791,7 +850,7 @@ int main(void)
                                         &inf->img.bpp,
                                         &inf->img.sl,
                                         &inf->img.endian);
-    
+
     inf->color.ceil = 11656444;
     inf->color.floor = 8421504;
 
