@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   test.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
+/*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/29 22:52:18 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/29 23:48:47 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,10 +24,9 @@
 #define SPRITE 2
 
 #define SIGNATURE "BM"
-#define RESREVED_BYTE 0
+#define RESEREVED 0
 #define SIZE_HEADER 14
 #define SIZE_INFO_HEADER 40
-#define OFFSET SIZE_HEADER + SIZE_INFO_HEADER + 4
 #define COMPRESSION 0
 
 #define COLORLESS -16777216
@@ -61,13 +60,13 @@ typedef struct s_header
 {
 	char *sign;
 	int file_size;
-	int	res_byte1;
-	int res_byte2;
+	int res_byte;
+    int offset;
 }				t_header;
 
 typedef struct s_info_header
 {
-	int info_header_size;
+	int size;
 	int width;
 	int height;
 	int planes;
@@ -83,8 +82,8 @@ typedef struct s_info_header
 
 typedef struct	s_bitmap
 {
-	t_header header;
-	t_info_header info_header;
+	t_header h;
+	t_info_header i_h;
 	int	*data;
 }				t_bitmap;
 
@@ -793,22 +792,22 @@ int add_textr(void *mlx_ptr, t_image *textr, char *filename)
 
 void init_bmp(t_bitmap *bmp, t_inf *inf)
 {
-	bmp->info_header.width = inf->img.width;
-	bmp->info_header.height = inf->img.height;
-	bmp->info_header.img_size = SIZE_INFO_HEADER;
-}
-
-void write_header(t_inf *inf, int fd)
-{
-	int header_elem;
-	
-	write(fd, SIGNATURE, 2);
-	header_elem = SIZE_HEADER + 4 * inf->img.height * inf->img.width;
-	write(fd, &header_elem, 4);
-	write(fd, &header_elem, 4);
-	header_elem = RESREVED_BYTE;
-	write(fd, &header_elem, 2);
-	write(fd, &header_elem, 2);
+	bmp->i_h.size = 40;
+	bmp->i_h.width = inf->img.width;
+	bmp->i_h.height = inf->img.height;
+    bmp->i_h.planes = 1;
+    bmp->i_h.bpp = inf->img.bpp;
+    bmp->i_h.compres = 0;
+    bmp->i_h.img_size = inf->img.width * inf->img.height;
+    bmp->i_h.hor_resol = inf->img.width;
+    bmp->i_h.ver_resol = inf->img.height;
+    bmp->i_h.color_used = 0;
+    bmp->i_h.color_important = 0;
+    bmp->h.sign = "BM";
+    bmp->h.file_size = 14 + bmp->i_h.size + bmp->i_h.img_size;
+    bmp->h.res_byte = 0;
+    bmp->h.offset = 14 + bmp->i_h.size;
+    bmp->data = inf->img.data;
 }
 
 void save_screen(t_inf *inf)
@@ -816,16 +815,29 @@ void save_screen(t_inf *inf)
 	int fd;
 	t_bitmap bmp;
 
-	fd = open("screenshot.bpm", O_CREAT | O_RDWR);
-	bmp_init(&bmp, inf);
-	write_header(inf, fd);
-	write_info_header(inf, fd);
 	raycast(inf);
-	write_data(inf, fd);
+	fd = open("screenshot.bpm", O_CREAT | O_RDWR);
+    bmp_init(&bmp, inf);
+    write(fd, bmp.h.sign, 2);
+    write(fd, &bmp.h.file_size, 4);
+    write(fd, &bmp.h.res_byte, 2);
+    write(fd, &bmp.h.res_byte, 2);
+    write(fd, &bmp.h.offset, 4);
+    write(fd, &bmp.i_h.width, 4);
+    write(fd, &bmp.i_h.height, 4);
+    write(fd, &bmp.i_h.planes, 2);
+    write(fd, &bmp.i_h.bpp, 2);
+    write(fd, &bmp.i_h.compres, 4);
+    write(fd, &bmp.i_h.img_size, 4);
+    write(fd, &bmp.i_h.hor_resol, 4);
+    write(fd, &bmp.i_h.ver_resol, 4);
+    write(fd, &bmp.i_h.color_used, 4);
+    write(fd, &bmp.i_h.color_important, 4);
+    write(fd, bmp.data, bmp.i_h.img_size);
 	close(fd);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     t_inf *inf;
     if (!(inf = (t_inf *)malloc(sizeof(t_inf))))
@@ -850,7 +862,7 @@ int main(void)
                                         &inf->img.bpp,
                                         &inf->img.sl,
                                         &inf->img.endian);
-
+    
     inf->color.ceil = 11656444;
     inf->color.floor = 8421504;
 
@@ -908,6 +920,12 @@ int main(void)
     inf->event.move_right = 0;
     inf->event.turn_left = 0;
     inf->event.turn_right = 0;
+
+    if (argc != 1)
+    {
+        save_screen(inf);
+        close_game(inf);        
+    }
 
     mlx_hook(inf->win_ptr, 17, 1L << 17, close_game, inf);
 	mlx_hook(inf->win_ptr, 2, 1L << 0, button_press, inf);
