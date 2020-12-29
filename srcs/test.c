@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/28 18:40:30 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/29 02:08:48 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,9 @@
 #define MAP_WIDTH 11
 #define textr_HEIGHT 64
 #define textr_WIDTH 64
+
+#define WALL 1
+#define SPRITE 2
 
 #define EXIT 65307
 #define MOVE_FORWARD 119
@@ -57,11 +60,17 @@ typedef struct  s_point_i
     int y;
 }               t_point_i;
 
-typedef struct  s_sprite
+typedef struct  s_spr
 {
-    t_point_i   pos;
+    t_point_i   abs_pos;
     double      dist;
-}               t_sprite;
+	t_point_d	transform;
+	int			screen_x;
+	t_point_i	start;
+	t_point_i	end;
+	int			width;
+	int			height;
+}               t_spr;
 
 typedef struct      s_view
 {
@@ -104,7 +113,7 @@ typedef struct      s_ray
 
 typedef struct			s_image
 {
-	int					size_line;
+	int					sl;
 	int					bpp;
 	int					endian;
 	void				*img_ptr;
@@ -119,7 +128,7 @@ typedef struct s_textr
     t_image s_side;
     t_image e_side;
     t_image w_side;
-    t_image sprite;
+    t_image spr;
 }               t_textr;
 
 typedef struct  s_inf
@@ -137,17 +146,20 @@ typedef struct  s_inf
     t_image         test;
     t_color         color;
     t_image         curr_textr;
-    
+    t_spr        *sprs;
+    int             num_all_sprs;
+    int             num_actual_sprs;
+	double			*dist_buf;
 }                   t_inf;
 
 void    put_color(t_image *img, int x, int y, int color)
 {
-    img->data[y * img->size_line / 4 + x] = color;
+    img->data[y * img->sl / 4 + x] = color;
 }
 
 int     get_color(t_image *img, int x, int y)
 {
-    return (img->data[y * img->size_line / 4 + x]);
+    return (img->data[y * img->sl / 4 + x]);
 }
 
 void set_curr_textr(t_inf *inf)
@@ -263,12 +275,48 @@ void calculate_step(t_inf *inf)
     }
 }
 
-void calculate_dist_to_wall(t_inf *inf)
+void reset_sprs(t_spr *sprs, int *num_actual_sprs)
 {
-    int hit;
-    
-    hit = 0;
-    while (hit == 0)
+	int i;
+
+	i = 0;
+	while (i < *num_actual_sprs)
+	{
+		sprs[i].dist = -1;	
+		i++;
+	}
+	*num_actual_sprs = 0;
+}
+
+void count_dist_to_spr(t_inf *inf)
+{
+	int	spr_x;
+	int	spr_y;
+	int view_x;
+	int view_y;
+	int	i;
+	int	delta_x;
+	int delta_y;
+
+
+	view_x = inf->view.pos.x;
+	view_y = inf->view.pos.y;
+	i = 0;
+	while (i < inf->num_all_sprs)
+	{
+		spr_x = inf->sprs[i].abs_pos.x;
+		spr_y = inf->sprs[i].abs_pos.y;
+		delta_x = abs(spr_x - view_x);
+		delta_y = abs(spr_y - view_y);
+		inf->sprs[i].dist = sqrt(delta_y * delta_y + delta_x * delta_x);
+		inf->num_actual_sprs++;
+		i++;
+	}
+}
+
+void calculate_dist_to_wall(t_inf *inf, int screen_x)
+{
+    while (1)
     {
         if (inf->ray.cur_dist.x < inf->ray.cur_dist.y)
         {
@@ -282,13 +330,20 @@ void calculate_dist_to_wall(t_inf *inf)
             inf->ray.pos.y += inf->ray.step.y;
             inf->ray.hit_side = 1;
         }
-        if (inf->map[inf->ray.pos.x][inf->ray.pos.y] == 1)
-            hit = 1;
+        // if (inf->map[inf->ray.pos.x][inf->ray.pos.y] == SPRITE)
+        //     count_dist_to_spr(inf);
+        if (inf->map[inf->ray.pos.x][inf->ray.pos.y] == WALL)
+            break;
     }
     if (inf->ray.hit_side == 0)
-        inf->ray.dist = (inf->ray.pos.x - inf->view.pos.x +(1 - inf->ray.step.x) / 2) / inf->ray.dir.x;
+        inf->ray.dist = (inf->ray.pos.x - inf->view.pos.x +
+                        (1 - inf->ray.step.x) / 2) / inf->ray.dir.x;
     else
-        inf->ray.dist = (inf->ray.pos.y - inf->view.pos.y + (1 - inf->ray.step.y) / 2) / inf->ray.dir.y;
+	{
+        inf->ray.dist = (inf->ray.pos.y - inf->view.pos.y +
+                        (1 - inf->ray.step.y) / 2) / inf->ray.dir.y;
+	}
+	inf->dist_buf[screen_x] = inf->ray.dist;
 }
 
 void calculate_wall_range(t_inf *inf)
@@ -300,7 +355,7 @@ void calculate_wall_range(t_inf *inf)
     height = (int)(HEIGHT / inf->ray.dist);
     if ((start = -height / 2 + HEIGHT / 2) < 0)
         start = 0;
-    if ((end = height / 2 + HEIGHT / 2) > HEIGHT)
+    if ((end = height / 2 + HEIGHT / 2) >= HEIGHT)
         end = HEIGHT - 1;
     inf->ray.wall_height = height;
     inf->ray.wall_start = start;
@@ -323,6 +378,138 @@ void draw_stripe(t_inf *inf, int screen_x)
     draw_color_range(inf, screen_x, inf->ray.wall_end, HEIGHT - 1, inf->color.floor);
 }
 
+void swap_sprs(t_spr *a, t_spr *b)
+{
+	t_spr tmp;
+
+	tmp.dist = a->dist;
+	tmp.abs_pos.x = a->abs_pos.x;
+	tmp.abs_pos.y = a->abs_pos.y;
+	a->dist = b->dist;
+	a->abs_pos.x = b->abs_pos.x;
+	a->abs_pos.y = b->abs_pos.y;
+	b->dist = tmp.dist;
+	b->abs_pos.x = tmp.abs_pos.x;
+	b->abs_pos.y = tmp.abs_pos.y;
+}
+
+void sort_sprs(t_spr *sprs, int num_sprs)
+{
+	int i;
+	int j;
+
+
+	i = 0;
+	while (i + 1 < num_sprs)
+	{
+		j = 0;
+		while (j + 1 < num_sprs - j)
+		{
+			if (sprs[i].dist < sprs[i + 1].dist)
+				swap_sprs(&sprs[i], &sprs[i + 1]);
+			j++;
+		}
+		i++;
+	}
+}
+
+void transform_spr(t_spr *spr, t_inf *inf)
+{
+	t_point_d rel_pos;
+	double inv_det;
+	
+	rel_pos.x = spr->abs_pos.x - inf->view.pos.x;
+	rel_pos.y = spr->abs_pos.y - inf->view.pos.y;
+	inv_det = 1.0 / (inf->view.cam_plane.x * inf->view.dir.y -
+					inf->view.cam_plane.y * inf->view.dir.x);
+	spr->transform.x = inv_det * (inf->view.dir.y * rel_pos.x -
+								inf->view.dir.x * rel_pos.y);
+	spr->transform.y = inv_det * (-inf->view.cam_plane.y * rel_pos.x +
+								inf->view.cam_plane.x * rel_pos.y);
+	spr->screen_x = (int)((WIDTH / 2) *
+					(1 + spr->transform.x / spr->transform.y));
+}
+
+void calculate_spr_range(t_spr *spr)
+{
+	spr->height = abs((int)(HEIGHT / spr->transform.y));
+	if ((spr->start.y = -spr->height / 2 + HEIGHT / 2) < 0)
+		spr->start.y = 0;
+	if ((spr->end.y = spr->height / 2 + HEIGHT / 2) >= HEIGHT)
+		spr->end.y = HEIGHT - 1;
+	spr->width = spr->height;
+	if ((spr->start.x = - spr->width / 2 + spr->screen_x) < 0)
+		spr->start.x = 0;
+	if ((spr->end.x = spr->width / 2 + spr->screen_x) >= WIDTH)
+		spr->end.x = WIDTH - 1;	
+}
+
+void draw_curr_spr(t_spr *spr, t_image *spr_img, t_inf *inf)
+{
+	int x;
+	int y;
+	double textr_step;
+	int textr_x;
+	int textr_y;
+	int color;
+	
+	x = spr->start.x;
+    textr_step = 1.0 * spr_img->height / spr->height;
+	while (x < spr->end.x)
+	{
+		textr_x = (int)(spr_img->sl * (x - (-spr->width / 2 +spr->screen_x)) *
+						spr_img->width / spr->width) / spr_img->sl;
+		y = spr->start.y;
+		while (y < spr->end.y)
+		{
+			textr_y = (y - HEIGHT / 2 + spr->height) * textr_step;
+			color = get_color(spr_img, textr_x, textr_y);
+			if (color != 0)
+				put_color(&inf->img, spr->screen_x, y, color);
+			y++;
+		}
+		x++;
+	}
+}
+
+void print_sprs(t_spr *sprs, int num)
+{
+	int i;
+	
+	i = 0;
+	while (i < num)
+	{
+		ft_putnbr_fd((sprs + i)->abs_pos.x, 1);
+		ft_putstr_fd(" ", 1);
+		ft_putnbr_fd(sprs[i].abs_pos.y, 1);
+		ft_putstr_fd(" ", 1);
+		ft_putnbr_fd((int)sprs[i].dist, 1);
+		ft_putstr_fd("\n", 1);
+		i++;
+	}
+	ft_putstr_fd("\n\n", 1);
+}
+
+void draw_sprs(t_inf *inf)
+{
+	int i;
+
+	i = 0;
+	count_dist_to_spr(inf);
+	print_sprs(inf->sprs, inf->num_all_sprs);
+	sort_sprs(inf->sprs, inf->num_all_sprs);
+	ft_putstr_fd("\n\n", 1);
+	print_sprs(inf->sprs, inf->num_all_sprs);
+	while (i < inf->num_actual_sprs)
+	{
+		transform_spr(inf->sprs + i, inf);
+		calculate_spr_range(inf->sprs + i);
+		draw_curr_spr(inf->sprs + i, &inf->textr.spr, inf);
+		i++;
+	}
+	// reset_sprs(inf->sprs, &inf->num_actual_sprs);
+}
+
 int raycast(t_inf *inf)
 {
     int screen_x;
@@ -332,12 +519,15 @@ int raycast(t_inf *inf)
     {
         init_ray(inf, screen_x);
         calculate_step(inf);
-        calculate_dist_to_wall(inf);
+        calculate_dist_to_wall(inf, screen_x);
         calculate_wall_range(inf);
         draw_stripe(inf, screen_x);
         screen_x++;
     }
-    return (1);
+	// print_sprs(inf->sprs, inf->num_all_sprs);
+	// ft_putnbr_fd(inf->num_actual_sprs, 1);
+	draw_sprs(inf);
+	return (1);
 }
 
 int **fill_map(int map[MAP_HEIGHT][MAP_WIDTH])
@@ -352,19 +542,6 @@ int **fill_map(int map[MAP_HEIGHT][MAP_WIDTH])
             new_map[i][j] = map[i][j];        
     }
     return (new_map);
-}
-
-void clear_map(int **map, int height)
-{
-    int i;
-
-    i = 0;
-    while (i < height)
-    {
-        free(map[i]);
-        i++;
-    }
-    free(map);
 }
 
 void move_for_back(t_inf *inf, double dir)
@@ -415,11 +592,25 @@ void turn_left_right(t_inf *inf, double turn_sin, double turn_cos)
                             old_x * turn_sin;
 }
 
+void free_array(void **array, int height)
+{
+	int i;
+
+	i = 0;
+	while (i < height)
+	{
+		free(array[i]);
+		i++;
+	}
+	free(array);
+}
+
 int close_game(t_inf *inf)
 {
-    clear_map(inf->map, MAP_HEIGHT);
+    free_array((void **)inf->map, MAP_HEIGHT);
     mlx_destroy_window(inf->mlx_ptr, inf->win_ptr);
     free(inf->mlx_ptr);
+    free(inf->sprs);
     free(inf);
     exit (1);
     return (0);
@@ -489,6 +680,60 @@ int button_press(int event_button, t_inf *inf)
     return (0);
 }
 
+int num_digits(int **array, int array_height, int array_width, int dig)
+{
+    int i;
+    int j;
+    int num;
+
+    i = 0;
+    num = 0;
+    while (i < array_height)
+    {
+		j = 0;
+        while (j < array_width)
+        {
+            if (array[i][j] == dig)
+                num++;
+            j++;
+        }
+        i++;
+    }
+    return (num);
+}
+
+int init_sprs(t_inf *inf)
+{
+    int         x;
+    int         y;
+	int			i;
+
+    inf->num_all_sprs = num_digits(inf->map, MAP_HEIGHT, MAP_WIDTH, SPRITE);
+    if (!(inf->sprs = (t_spr *)malloc(inf->num_all_sprs * sizeof(t_spr))))
+		return (KO);
+	x = 0;
+	i = 0;
+	while (x < MAP_HEIGHT && i < inf->num_all_sprs)
+	{
+		y = 0;
+		while (y < MAP_WIDTH && i < inf->num_all_sprs)
+        {
+            if (inf->map[x][y] == SPRITE)
+			{
+				inf->sprs[i].abs_pos.x = x;
+				inf->sprs[i].abs_pos.y = y;
+				inf->sprs[i].dist = 0;
+				i++;
+			}
+            y++;
+        }
+		x++;
+	}
+	// print_sprs(inf->sprs, inf->num_all_sprs);
+	inf->num_actual_sprs = 0;
+	return (OK);
+}
+
 int add_textr(void *mlx_ptr, t_image *textr, char *filename)
 {
     if (!(textr->img_ptr = mlx_xpm_file_to_image(mlx_ptr, filename, &textr->width, &textr->height)))
@@ -497,7 +742,7 @@ int add_textr(void *mlx_ptr, t_image *textr, char *filename)
     }
     textr->data = (int *)mlx_get_data_addr(textr->img_ptr,
                                             &textr->bpp,
-                                            &textr->size_line,
+                                            &textr->sl,
                                             &textr->endian);
     return (OK);
 }
@@ -519,39 +764,42 @@ int main(void)
         close_game(inf);
     if (add_textr(inf->mlx_ptr, &inf->textr.s_side, "../txtrs/south.xpm") == KO)
         close_game(inf);
-    if (add_textr(inf->mlx_ptr, &inf->textr.sprite, "../txtrs/barrel.xpm") == KO)
+    if (add_textr(inf->mlx_ptr, &inf->textr.spr, "../txtrs/barrel.xpm") == KO)
         close_game(inf);
 
     inf->img.img_ptr = mlx_new_image(inf->mlx_ptr, WIDTH, HEIGHT);
     inf->img.data = (int *)mlx_get_data_addr(inf->img.img_ptr,
                                         &inf->img.bpp,
-                                        &inf->img.size_line,
+                                        &inf->img.sl,
                                         &inf->img.endian);
     
     inf->color.ceil = 11656444;
     inf->color.floor = 8421504;
 
+	inf->dist_buf = (double *)ft_calloc(WIDTH, sizeof(double));
+
     int	map[MAP_HEIGHT][MAP_WIDTH] =
     {
         {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1},
+        {1, 1, 1, 1, 0, 0, 0, 0, 0, 2, 1},
         {1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 2, 0, 2, 0, 0, 0, 0, 0, 0, 1},
+        {1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 2, 0, 2, 2, 2, 0, 0, 0, 2, 1},
         {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 2, 2, 2, 2, 2, 0, 0, 0, 0, 1},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+        {1, 1, 2, 2, 0, 0, 0, 0, 0, 2, 1},
+        {1, 2, 2, 2, 0, 0, 0, 0, 2, 2, 1},
         {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
     };
 
     inf->map = fill_map(map);
-
+    init_sprs(inf);
+    
     t_view view;
     view.dir.x = 0.0;
     view.dir.y = -1.0;
-    view.pos.x = 8.9;
-    view.pos.y = 8.9;
+    view.pos.x = 6.5;
+    view.pos.y = 1.5;
     view.cam_plane.x = -0.66;
     view.cam_plane.y = 0;
 
@@ -568,7 +816,7 @@ int main(void)
     inf->event.move_right = 0;
     inf->event.turn_left = 0;
     inf->event.turn_right = 0;
-    
+
     mlx_hook(inf->win_ptr, 17, 1L << 17, close_game, inf);
 	mlx_hook(inf->win_ptr, 2, 1L << 0, button_press, inf);
     mlx_loop_hook(inf->mlx_ptr, event_nadling, inf);
