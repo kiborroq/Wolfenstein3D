@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   test.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
+/*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/29 02:08:48 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/29 16:23:03 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,13 +15,15 @@
 
 #define WIDTH 1820
 #define HEIGHT 1000
-#define MAP_HEIGHT 10
-#define MAP_WIDTH 11
+#define MAP_HEIGHT 24
+#define MAP_WIDTH 24
 #define textr_HEIGHT 64
 #define textr_WIDTH 64
 
 #define WALL 1
 #define SPRITE 2
+
+#define COLORLESS -16777216
 
 #define EXIT 65307
 #define MOVE_FORWARD 119
@@ -62,7 +64,7 @@ typedef struct  s_point_i
 
 typedef struct  s_spr
 {
-    t_point_i   abs_pos;
+    t_point_d   abs_pos;
     double      dist;
 	t_point_d	transform;
 	int			screen_x;
@@ -99,11 +101,11 @@ typedef struct s_event
 
 typedef struct      s_ray
 {
-    t_point_d  dir;
-    t_point_i     pos;
-    t_point_d  cur_dist;
-    t_point_d  delt_dist;
-    t_point_i     step;
+    t_point_d  		dir;
+    t_point_i       pos;
+    t_point_d       cur_dist;
+    t_point_d       delt_dist;
+    t_point_i       step;
     double          dist;
     int             hit_side;
     int             wall_start;
@@ -139,16 +141,14 @@ typedef struct  s_inf
     void            *mlx_ptr;
     void            *win_ptr;
     t_image         img;
-    // t_image         img_buf;
     int             **map;
     t_event         event;
     t_textr         textr;
     t_image         test;
     t_color         color;
     t_image         curr_textr;
-    t_spr        *sprs;
-    int             num_all_sprs;
-    int             num_actual_sprs;
+    t_spr           *sprs;
+    int             num_sprs;
 	double			*dist_buf;
 }                   t_inf;
 
@@ -302,14 +302,13 @@ void count_dist_to_spr(t_inf *inf)
 	view_x = inf->view.pos.x;
 	view_y = inf->view.pos.y;
 	i = 0;
-	while (i < inf->num_all_sprs)
+	while (i < inf->num_sprs)
 	{
 		spr_x = inf->sprs[i].abs_pos.x;
 		spr_y = inf->sprs[i].abs_pos.y;
 		delta_x = abs(spr_x - view_x);
 		delta_y = abs(spr_y - view_y);
 		inf->sprs[i].dist = sqrt(delta_y * delta_y + delta_x * delta_x);
-		inf->num_actual_sprs++;
 		i++;
 	}
 }
@@ -438,7 +437,7 @@ void calculate_spr_range(t_spr *spr)
 	if ((spr->end.y = spr->height / 2 + HEIGHT / 2) >= HEIGHT)
 		spr->end.y = HEIGHT - 1;
 	spr->width = spr->height;
-	if ((spr->start.x = - spr->width / 2 + spr->screen_x) < 0)
+	if ((spr->start.x = -spr->width / 2 + spr->screen_x) < 0)
 		spr->start.x = 0;
 	if ((spr->end.x = spr->width / 2 + spr->screen_x) >= WIDTH)
 		spr->end.x = WIDTH - 1;	
@@ -452,22 +451,25 @@ void draw_curr_spr(t_spr *spr, t_image *spr_img, t_inf *inf)
 	int textr_x;
 	int textr_y;
 	int color;
-	
+
 	x = spr->start.x;
     textr_step = 1.0 * spr_img->height / spr->height;
 	while (x < spr->end.x)
 	{
-		textr_x = (int)(spr_img->sl * (x - (-spr->width / 2 +spr->screen_x)) *
+		textr_x = (int)(spr_img->sl * (x - (-spr->width / 2 + spr->screen_x)) *
 						spr_img->width / spr->width) / spr_img->sl;
 		y = spr->start.y;
-		while (y < spr->end.y)
-		{
-			textr_y = (y - HEIGHT / 2 + spr->height) * textr_step;
-			color = get_color(spr_img, textr_x, textr_y);
-			if (color != 0)
-				put_color(&inf->img, spr->screen_x, y, color);
-			y++;
-		}
+        if (spr->transform.y > 0 && x > 0 && x < WIDTH && spr->transform.y < inf->dist_buf[x])
+        {
+            while (y < spr->end.y)
+		    {
+		    	textr_y = (y - HEIGHT / 2 + spr->height / 2) * textr_step;
+		    	color = get_color(spr_img, textr_x, textr_y);
+		    	if (color != COLORLESS)
+		    		put_color(&inf->img, x, y, color);
+		    	y++;
+		    }
+        }
 		x++;
 	}
 }
@@ -496,18 +498,14 @@ void draw_sprs(t_inf *inf)
 
 	i = 0;
 	count_dist_to_spr(inf);
-	print_sprs(inf->sprs, inf->num_all_sprs);
-	sort_sprs(inf->sprs, inf->num_all_sprs);
-	ft_putstr_fd("\n\n", 1);
-	print_sprs(inf->sprs, inf->num_all_sprs);
-	while (i < inf->num_actual_sprs)
+	sort_sprs(inf->sprs, inf->num_sprs);
+	while (i < inf->num_sprs)
 	{
 		transform_spr(inf->sprs + i, inf);
 		calculate_spr_range(inf->sprs + i);
 		draw_curr_spr(inf->sprs + i, &inf->textr.spr, inf);
 		i++;
 	}
-	// reset_sprs(inf->sprs, &inf->num_actual_sprs);
 }
 
 int raycast(t_inf *inf)
@@ -524,8 +522,6 @@ int raycast(t_inf *inf)
         draw_stripe(inf, screen_x);
         screen_x++;
     }
-	// print_sprs(inf->sprs, inf->num_all_sprs);
-	// ft_putnbr_fd(inf->num_actual_sprs, 1);
 	draw_sprs(inf);
 	return (1);
 }
@@ -605,12 +601,32 @@ void free_array(void **array, int height)
 	free(array);
 }
 
+void destroy_mlx_elems(t_inf *inf)
+{
+    if (inf->textr.e_side.img_ptr)
+        mlx_destroy_image(inf->mlx_ptr, inf->textr.e_side.img_ptr);
+    if (inf->textr.w_side.img_ptr)
+        mlx_destroy_image(inf->mlx_ptr, inf->textr.w_side.img_ptr);
+    if (inf->textr.s_side.img_ptr)
+        mlx_destroy_image(inf->mlx_ptr, inf->textr.s_side.img_ptr);
+    if (inf->textr.n_side.img_ptr)
+        mlx_destroy_image(inf->mlx_ptr, inf->textr.n_side.img_ptr);
+    if (inf->textr.spr.img_ptr)
+        mlx_destroy_image(inf->mlx_ptr, inf->textr.spr.img_ptr);
+    if (inf->img.img_ptr)
+        mlx_destroy_image(inf->mlx_ptr, inf->img.img_ptr);
+    if (inf->win_ptr)
+        mlx_destroy_window(inf->mlx_ptr, inf->win_ptr);
+    if (inf->mlx_ptr)
+        free(inf->mlx_ptr);
+}
+
 int close_game(t_inf *inf)
 {
-    free_array((void **)inf->map, MAP_HEIGHT);
-    mlx_destroy_window(inf->mlx_ptr, inf->win_ptr);
-    free(inf->mlx_ptr);
+    destroy_mlx_elems(inf);
+    free_array((void **)inf->map, MAP_WIDTH);
     free(inf->sprs);
+    free(inf->dist_buf);
     free(inf);
     exit (1);
     return (0);
@@ -708,29 +724,27 @@ int init_sprs(t_inf *inf)
     int         y;
 	int			i;
 
-    inf->num_all_sprs = num_digits(inf->map, MAP_HEIGHT, MAP_WIDTH, SPRITE);
-    if (!(inf->sprs = (t_spr *)malloc(inf->num_all_sprs * sizeof(t_spr))))
+    inf->num_sprs = num_digits(inf->map, MAP_HEIGHT, MAP_WIDTH, SPRITE);
+    if (!(inf->sprs = (t_spr *)malloc(inf->num_sprs * sizeof(t_spr))))
 		return (KO);
 	x = 0;
 	i = 0;
-	while (x < MAP_HEIGHT && i < inf->num_all_sprs)
+	while (x < MAP_HEIGHT && i < inf->num_sprs)
 	{
 		y = 0;
-		while (y < MAP_WIDTH && i < inf->num_all_sprs)
+		while (y < MAP_WIDTH && i < inf->num_sprs)
         {
             if (inf->map[x][y] == SPRITE)
 			{
-				inf->sprs[i].abs_pos.x = x;
-				inf->sprs[i].abs_pos.y = y;
-				inf->sprs[i].dist = 0;
+				inf->sprs[i].abs_pos.x = x + .5;
+				inf->sprs[i].abs_pos.y = y + .5;
+				inf->sprs[i].dist = .0;
 				i++;
 			}
             y++;
         }
 		x++;
 	}
-	// print_sprs(inf->sprs, inf->num_all_sprs);
-	inf->num_actual_sprs = 0;
 	return (OK);
 }
 
@@ -746,6 +760,11 @@ int add_textr(void *mlx_ptr, t_image *textr, char *filename)
                                             &textr->endian);
     return (OK);
 }
+
+// void save_screen(t_inf *inf)
+// {
+    
+// }
 
 int main(void)
 {
@@ -780,16 +799,30 @@ int main(void)
 
     int	map[MAP_HEIGHT][MAP_WIDTH] =
     {
-        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 0, 0, 0, 0, 0, 2, 1},
-        {1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 2, 0, 2, 0, 0, 0, 0, 0, 0, 1},
-        {1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 2, 0, 2, 2, 2, 0, 0, 0, 2, 1},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {1, 1, 2, 2, 0, 0, 0, 0, 0, 2, 1},
-        {1, 2, 2, 2, 0, 0, 0, 0, 2, 2, 1},
-        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+        {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+        {1,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
+        {1,0,2,2,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
+        {1,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+        {1,0,2,2,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,1,0,1,1,1},
+        {1,0,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1},
+        {1,1,1,1,0,1,1,1,1,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1},
+        {1,1,0,0,0,0,0,0,1,1,0,1,0,1,0,1,1,1,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,0,1,0,1},
+        {1,1,0,0,0,0,0,0,1,1,0,1,0,1,0,1,1,1,1,1,0,1,1,1},
+        {1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,2,2,2,0,2,2,1},
+        {1,1,1,1,0,1,1,1,1,1,1,1,0,0,1,0,1,2,0,0,0,0,0,1},
+        {1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,2,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,1,1,1,0,0,0,1,1},
+        {1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,1,0,1,0,1},
+        {1,1,0,0,0,0,0,1,1,1,0,0,0,1,1,0,1,0,1,0,0,0,1,1},
+        {1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,1,0,1,0,1,0,1},
+        {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,1,0,1,0,1,0,1},
+        {1,1,0,0,0,0,0,1,1,1,0,0,0,1,1,0,1,0,1,0,0,0,1,1},
+        {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
     };
 
     inf->map = fill_map(map);
@@ -825,3 +858,5 @@ int main(void)
 
     return 0;
 }
+
+// gcc -Werror -Wextra -Wall test.c -L ../minilibx/ -lmlx -L ../libft/ -lft -lm -lX11 -lbsd -lXext
