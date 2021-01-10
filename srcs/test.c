@@ -6,15 +6,25 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/30 01:02:59 by kiborroq         ###   ########.fr       */
+/*   Updated: 2021/01/10 23:24:47 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #define OK 1
 #define KO -1
 
+#define NUM_ELEMS 8
+#define SPACES " \n\t\v\r\f"
+
+#define NOT_ENOUGH_MEMORY "Not enough memory for allocation"
+#define NOT_ENOUGH_CONFIG "Map start but not all config elems are defined"
+#define COLOR_ERROR "Error in color elem"
+#define TEXTURE_ERROR "Error in texture or sprite elem"
+#define RESOLUTION_ERROR "Error in resolution elem"
+#define UNKNOWN_ELEM "Unknown config elem"
+
 #define WIDTH 1820
-#define HEIGHT 1000
+#define HEIGHT 980
 #define MAP_HEIGHT 24
 #define MAP_WIDTH 24
 #define textr_HEIGHT 64
@@ -22,12 +32,6 @@
 
 #define WALL 1
 #define SPRITE 2
-
-#define SIGNATURE "BM"
-#define RESEREVED 0
-#define SIZE_HEADER 14
-#define SIZE_INFO_HEADER 40
-#define COMPRESSION 0
 
 #define COLORLESS -16777216
 
@@ -38,7 +42,6 @@
 #define MOVE_RIGHT 100
 #define TURN_LEFT 65361
 #define TURN_RIGHT 65363 
-
 #define MOVE_SPEED 0.0455
 #define TURN_SPEED 0.03276
 
@@ -49,6 +52,7 @@
 #include "../minilibx/mlx.h"
 #include "../libft/libft.h"
 #include "fcntl.h"
+#include "../get_next_line/get_next_line.h"
 
 typedef struct s_color
 {
@@ -176,8 +180,8 @@ typedef struct  s_inf
     t_view          view;
     t_ray           ray;
     t_turn_sin_cos  turn;
-    void            *mlx_ptr;
-    void            *win_ptr;
+    void            *mlx;
+    void            *win;
     t_image         img;
     int             **map;
     t_event         event;
@@ -188,6 +192,10 @@ typedef struct  s_inf
     t_spr           *sprs;
     int             num_sprs;
 	double			*dist_buf;
+	int				map_line;
+	char			*message;
+	int				width;
+	int				height;
 }                   t_inf;
 
 void    put_color(t_image *img, int x, int y, int color)
@@ -367,8 +375,6 @@ void calculate_dist_to_wall(t_inf *inf, int screen_x)
             inf->ray.pos.y += inf->ray.step.y;
             inf->ray.hit_side = 1;
         }
-        // if (inf->map[inf->ray.pos.x][inf->ray.pos.y] == SPRITE)
-        //     count_dist_to_spr(inf);
         if (inf->map[inf->ray.pos.x][inf->ray.pos.y] == WALL)
             break;
     }
@@ -429,7 +435,6 @@ void swap_sprs(t_spr *a, t_spr *b)
 	b->abs_pos.x = tmp.abs_pos.x;
 	b->abs_pos.y = tmp.abs_pos.y;
 }
-
 
 void print_sprs(t_spr *sprs, int num)
 {
@@ -530,7 +535,6 @@ void draw_curr_spr(t_spr *spr, t_image *spr_img, t_inf *inf)
 		x++;
 	}
 }
-
 
 void draw_sprs(t_inf *inf)
 {
@@ -633,41 +637,62 @@ void free_array(void **array, int height)
 	int i;
 
 	i = 0;
-	while (i < height)
+	if (array)
 	{
-		free(array[i]);
-		i++;
+		while (i < height)
+		{
+			if (array[i])
+				free(array[i]);
+			i++;
+		}
+		free(array);
 	}
-	free(array);
 }
 
 void destroy_mlx_elems(t_inf *inf)
 {
     if (inf->textr.e_side.img_ptr)
-        mlx_destroy_image(inf->mlx_ptr, inf->textr.e_side.img_ptr);
+        mlx_destroy_image(inf->mlx, inf->textr.e_side.img_ptr);
     if (inf->textr.w_side.img_ptr)
-        mlx_destroy_image(inf->mlx_ptr, inf->textr.w_side.img_ptr);
+        mlx_destroy_image(inf->mlx, inf->textr.w_side.img_ptr);
     if (inf->textr.s_side.img_ptr)
-        mlx_destroy_image(inf->mlx_ptr, inf->textr.s_side.img_ptr);
+        mlx_destroy_image(inf->mlx, inf->textr.s_side.img_ptr);
     if (inf->textr.n_side.img_ptr)
-        mlx_destroy_image(inf->mlx_ptr, inf->textr.n_side.img_ptr);
+        mlx_destroy_image(inf->mlx, inf->textr.n_side.img_ptr);
     if (inf->textr.spr.img_ptr)
-        mlx_destroy_image(inf->mlx_ptr, inf->textr.spr.img_ptr);
+        mlx_destroy_image(inf->mlx, inf->textr.spr.img_ptr);
     if (inf->img.img_ptr)
-        mlx_destroy_image(inf->mlx_ptr, inf->img.img_ptr);
-    if (inf->win_ptr)
-        mlx_destroy_window(inf->mlx_ptr, inf->win_ptr);
-    if (inf->mlx_ptr)
-        free(inf->mlx_ptr);
+        mlx_destroy_image(inf->mlx, inf->img.img_ptr);
+    if (inf->win)
+        mlx_destroy_window(inf->mlx, inf->win);
+    if (inf->mlx)
+        free(inf->mlx);
+}
+
+void	free_ptrs(void **p1, void **p2, void **p3)
+{
+	if (p1 && *p1)
+	{
+		free(*p1);
+		*p1 = 0;
+	}
+	if (p2 && *p2)
+	{
+		free(*p2);
+		*p2 = 0;
+	}
+	if (p3 && *p3)
+	{
+		free(*p3);
+		*p3 = 0;
+	}
 }
 
 int close_game(t_inf *inf)
 {
     destroy_mlx_elems(inf);
     free_array((void **)inf->map, MAP_WIDTH);
-    free(inf->sprs);
-    free(inf->dist_buf);
-    free(inf);
+    free_ptrs((void **)&inf->sprs, (void **)&inf->dist_buf, (void **)&inf);
     exit (1);
     return (0);
 }
@@ -675,7 +700,7 @@ int close_game(t_inf *inf)
 int event_nadling(t_inf *inf)
 {
     raycast(inf);
-    mlx_put_image_to_window(inf->mlx_ptr, inf->win_ptr, inf->img.img_ptr, 0 , 0);
+    mlx_put_image_to_window(inf->mlx, inf->win, inf->img.img_ptr, 0 , 0);
     if (inf->event.move_forawrd == 1)
         move_for_back(inf, 1.0);
     if (inf->event.move_backword == 1)
@@ -779,9 +804,9 @@ int init_sprs(t_inf *inf)
 	return (OK);
 }
 
-int add_textr(void *mlx_ptr, t_image *textr, char *filename)
+int add_textr(void *mlx, t_image *textr, char *path)
 {
-    if (!(textr->img_ptr = mlx_xpm_file_to_image(mlx_ptr, filename, &textr->width, &textr->height)))
+    if (!(textr->img_ptr = mlx_xpm_file_to_image(mlx, path, &textr->width, &textr->height)))
     {
         return (KO);
     }
@@ -815,17 +840,11 @@ void init_bmp(t_bitmap *bmp, t_inf *inf)
 void write_data(t_bitmap bmp, int sl, int fd)
 {
     int y;
-    int x;
 
     y = bmp.i_h.height - 1;
 	while (y >= 0)
 	{
-		x = 0;
-		while (x < bmp.i_h.width)
-		{
-			write(fd, &bmp.data[y * sl / 4 + x], 4);
-			x++;
-		}
+        write(fd, &bmp.data[y * sl / 4], sl);
 		y--;
 	}
 }
@@ -863,28 +882,251 @@ void save_screen(t_inf *inf)
 	close(fd);
 }
 
+int	isspaces(int ch)
+{
+    if (ch == 32 || (ch > 8 && ch < 14))
+            return (1);
+    return (0);
+}
+
+char *skip_spaces(char *str)
+{
+	while (isspaces(*str) && *str)
+		str++;
+	return (str);
+}
+
+int	add_textr_wrap(void *mlx, t_image *textr, char *path, char *elem)
+{
+	if (path > elem)
+		return (add_textr(mlx, textr, path));
+	return (KO);
+}
+
+int	init_textr(t_inf *inf, char *elem)
+{
+	int status;
+	char *path;
+
+	status = 0;
+	path = skip_spaces(elem + 2);
+	if (!ft_strncmp(elem, "EA", 2))
+		status = add_textr_wrap(inf->mlx, &inf->textr.e_side, path, elem + 2);
+	else if (!ft_strncmp(elem, "WE", 2))
+		status = add_textr_wrap(inf->mlx, &inf->textr.w_side, path, elem + 2);
+	else if (!ft_strncmp(elem, "SO", 2))
+		status = add_textr_wrap(inf->mlx, &inf->textr.s_side, path, elem + 2);
+	else if (!ft_strncmp(elem, "NO", 2))
+		status = add_textr_wrap(inf->mlx, &inf->textr.n_side, path, elem + 2);
+	else if (!ft_strncmp(elem, "S", 1))
+	{
+		path = skip_spaces(elem + 1);
+		status = add_textr_wrap(inf->mlx, &inf->textr.spr, path, elem + 1);
+	}
+	if (status == KO)
+		inf->message = TEXTURE_ERROR;
+	return (status);
+}
+
+char *skip_digits(char *str)
+{
+	while (ft_isdigit(*str))
+		str++;
+	return (str);
+}
+
+int add_rgb(int *color, char *rgb)
+{
+	int i;
+	int num;
+	char *curr;
+
+	i = 0;
+	while (i < 3  && *rgb)
+	{
+		if ((num = ft_atoi(rgb)) > 255 || num < 0)
+			break;
+		if ((curr = skip_spaces(rgb)) == rgb && i == 0)
+			break;
+		rgb = curr;
+		if ((curr = skip_digits(rgb)) == rgb)
+			break;
+		curr = skip_spaces(curr);
+		if (i < 2 && *curr != ',')
+			break;
+		curr++;
+		rgb = curr;
+		*color = (*color << 8) + num;
+		i++;
+	}
+	if (i < 3 || *rgb)
+		return (KO);
+	return (OK);
+}
+
+int	init_rgb(t_inf *inf, char *elem)
+{
+	int status;
+
+	status = 0;
+	if (elem[0] == 'F')
+		status = add_rgb(&inf->color.floor, elem + 1);
+	else if (elem[0] == 'C')
+		status = add_rgb(&inf->color.ceil, elem + 1);
+	if (status == KO)
+		inf->message = COLOR_ERROR;
+	return (status);
+}
+
+int	add_resltn(int *width, int *height, char *resltn)
+{
+	int i;
+	int num;
+	char *curr;
+
+	i = 0;
+	while (i < 2 && *resltn)
+	{
+		if ((num = ft_atoi(resltn)) < 0)
+			break;
+		if ((curr = skip_spaces(resltn)) == resltn)
+			break;
+		resltn = curr;
+		if ((curr = skip_digits(resltn)) == resltn)
+			break;
+		resltn = curr;
+		if (i == 0)
+			*width = num > *width ? *width : num;
+		else
+			*height = num > *height ? *height : num;
+		i++;
+	}
+	if (i < 2 || *resltn)
+		return (KO);
+	return (OK);
+}
+
+int	init_resltn(t_inf *inf, char *elem)
+{
+	int status;
+
+	status = 0;
+	if (elem[0] == 'R')
+		status = add_resltn(&inf->width, &inf->height, elem + 1);
+	if (status == KO)
+		inf->message = RESOLUTION_ERROR;
+	return (status);
+}
+
+int ismap(char *elem)
+{
+	while (*elem)
+	{
+		if (*elem != ' ' && *elem != '0' && *elem != '1' && *elem != '2')
+			return (0);
+		elem++;
+	}
+	return (1);
+}
+
+int	init_textr_rgb_resltn(char *elem, t_inf *inf)
+{
+	int status;
+
+	if ((status = init_textr(inf, elem)) == OK)
+		return (OK);
+	else if (status != KO && (status = init_rgb(inf, elem)) == OK)
+		return (OK);
+	else if (status != KO && (status = init_resltn(inf, elem)) == OK)
+		return (OK);
+	else if (status != KO)
+	{
+		elem = skip_spaces(elem);
+		if (*elem == '\0')
+			status = 0;
+		else if (ismap(elem))
+		{
+			status = KO;
+			inf->message = NOT_ENOUGH_CONFIG;
+		}
+		else
+		{
+			status = KO;
+			inf->message = UNKNOWN_ELEM;
+		}
+	}
+	return (status);
+}
+
+int config_parser(int fd, t_inf *inf)
+{
+	int		num;
+	char	*line;
+	char	*elem;
+	int		status;
+
+	num = 0;
+	status = 0;
+	while (num < NUM_ELEMS && get_next_line(fd, &line) > 0 && status != KO)
+	{
+		if (!(elem = ft_strtrim(line, SPACES)))
+		{
+			status = KO;
+			inf->message = NOT_ENOUGH_MEMORY;
+		}
+		else if ((status = init_textr_rgb_resltn(elem, inf)) == OK)
+			num++;
+		free_ptrs((void **)&elem, (void **)&line, (void **)0);
+		inf->map_line++;
+	}
+	free_ptrs((void **)&elem, (void **)&line, (void **)0);
+	if (status != KO && num < NUM_ELEMS)
+	{
+		status = KO;
+		inf->message = NOT_ENOUGH_CONFIG;
+	}
+	return (status);
+}
+
+int map_config_parser(t_inf *inf, char *map_path)
+{
+    int		fd;
+	int		status;
+
+	if ((fd = open(map_path, O_RDONLY)) == KO)
+		return (KO);
+	if ((status = config_parser(fd, inf)) != KO)
+		ft_putstr_fd("", 1);
+		// status = map_parser(fd, inf);
+	close(fd);
+	return (status);
+}
+
+void print_error_message(int line, char *message)
+{
+	ft_putstr_fd("line ", 1);
+	ft_putnbr_fd(line, 1);
+	ft_putstr_fd(": ", 1);
+	ft_putendl_fd(message, 1);
+}
+
 int main(int argc, char **argv)
 {
     t_inf *inf;
-    if (!(inf = (t_inf *)malloc(sizeof(t_inf))))
-        return (0);
+	if (!(inf = (t_inf *)ft_calloc(1, sizeof(t_inf))))
+		return (0);
 
-    ft_putstr_fd(argv[1], 1);
+    inf->mlx = mlx_init();
 
-    inf->mlx_ptr = mlx_init();
+	inf->width = mlx_get_screen_size(inf->mlx, &inf->width, &inf->height);
 
-    if (add_textr(inf->mlx_ptr, &inf->textr.e_side, "../txtrs/east.xpm") == KO)
-        close_game(inf);
-    if (add_textr(inf->mlx_ptr, &inf->textr.w_side, "../txtrs/west.xpm") == KO)
-        close_game(inf);
-    if (add_textr(inf->mlx_ptr, &inf->textr.n_side, "../txtrs/nord.xpm") == KO)
-        close_game(inf);
-    if (add_textr(inf->mlx_ptr, &inf->textr.s_side, "../txtrs/south.xpm") == KO)
-        close_game(inf);
-    if (add_textr(inf->mlx_ptr, &inf->textr.spr, "../txtrs/barrel.xpm") == KO)
-        close_game(inf);
+	if (map_config_parser(inf, "../map.cub") == KO)
+	{
+		print_error_message(inf->map_line, inf->message);
+		close_game(inf);
+	}
 
-    inf->img.img_ptr = mlx_new_image(inf->mlx_ptr, WIDTH, HEIGHT);
+    inf->img.img_ptr = mlx_new_image(inf->mlx, WIDTH, HEIGHT);
     inf->img.height = HEIGHT;
     inf->img.width = WIDTH;
     inf->img.data = (int *)mlx_get_data_addr(inf->img.img_ptr,
@@ -952,17 +1194,18 @@ int main(int argc, char **argv)
 
     if (argc != 1)
     {
+		ft_putstr_fd(argv[0], 1);
         save_screen(inf);
         close_game(inf);        
     }
 
-    inf->win_ptr = mlx_new_window(inf->mlx_ptr, WIDTH, HEIGHT, "Test");
+    inf->win = mlx_new_window(inf->mlx, WIDTH, HEIGHT, "Test");
 
-    mlx_hook(inf->win_ptr, 17, 1L << 17, close_game, inf);
-	mlx_hook(inf->win_ptr, 2, 1L << 0, button_press, inf);
-    mlx_loop_hook(inf->mlx_ptr, event_nadling, inf);
-	mlx_hook(inf->win_ptr, 3, 1L << 1, button_release, inf);
-    mlx_loop(inf->mlx_ptr);
+    mlx_hook(inf->win, 17, 1L << 17, close_game, inf);
+	mlx_hook(inf->win, 2, 1L << 0, button_press, inf);
+    mlx_loop_hook(inf->mlx, event_nadling, inf);
+	mlx_hook(inf->win, 3, 1L << 1, button_release, inf);
+    mlx_loop(inf->mlx);
 
     return 0;
 }
