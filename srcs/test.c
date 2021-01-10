@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2021/01/10 23:24:47 by kiborroq         ###   ########.fr       */
+/*   Updated: 2021/01/10 23:45:09 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,8 +23,6 @@
 #define RESOLUTION_ERROR "Error in resolution elem"
 #define UNKNOWN_ELEM "Unknown config elem"
 
-#define WIDTH 1820
-#define HEIGHT 980
 #define MAP_HEIGHT 24
 #define MAP_WIDTH 24
 #define textr_HEIGHT 64
@@ -266,7 +264,7 @@ void draw_wall(t_inf *inf, int screen_x)
     wall_x = get_wall_x(inf);
     textr_x = get_textr_x(inf, wall_x);
     textr_step = 1.0 * inf->curr_textr.height / inf->ray.wall_height;
-    textr_y_pos = (inf->ray.wall_start - HEIGHT / 2 + inf->ray.wall_height / 2) * textr_step;
+    textr_y_pos = (inf->ray.wall_start - inf->height / 2 + inf->ray.wall_height / 2) * textr_step;
     screen_y = inf->ray.wall_start;
     while (screen_y < inf->ray.wall_end)
     {
@@ -282,7 +280,7 @@ void init_ray(t_inf *inf, int screen_x)
 {
     double pos_on_plane;
 
-    pos_on_plane = 2 * screen_x / (double)WIDTH - 1;
+    pos_on_plane = 2 * screen_x / (double)inf->width - 1;
     inf->ray.dir.x = inf->view.dir.x + pos_on_plane * inf->view.cam_plane.x;
     inf->ray.dir.y = inf->view.dir.y + pos_on_plane * inf->view.cam_plane.y;
     inf->ray.pos.x = (int)inf->view.pos.x;
@@ -395,17 +393,17 @@ void calculate_wall_range(t_inf *inf)
     int start;
     int end;
 
-    height = (int)(HEIGHT / inf->ray.dist);
-    if ((start = -height / 2 + HEIGHT / 2) < 0)
+    height = (int)(inf->height / inf->ray.dist);
+    if ((start = -height / 2 + inf->height / 2) < 0)
         start = 0;
-    if ((end = height / 2 + HEIGHT / 2) >= HEIGHT)
-        end = HEIGHT - 1;
+    if ((end = height / 2 + inf->height / 2) >= inf->height)
+        end = inf->height - 1;
     inf->ray.wall_height = height;
     inf->ray.wall_start = start;
     inf->ray.wall_end = end;
 }
 
-void draw_color_range(t_inf *inf, int x, int start_y, int end_y, unsigned int color)
+void draw_color_range(t_inf *inf, int x, int start_y, int end_y, int color)
 {
     while (start_y <= end_y)
     {
@@ -418,7 +416,7 @@ void draw_stripe(t_inf *inf, int screen_x)
 {
     draw_color_range(inf, screen_x, 0, inf->ray.wall_start - 1, inf->color.ceil);
     draw_wall(inf, screen_x);
-    draw_color_range(inf, screen_x, inf->ray.wall_end, HEIGHT - 1, inf->color.floor);
+    draw_color_range(inf, screen_x, inf->ray.wall_end, inf->height - 1, inf->color.floor);
 }
 
 void swap_sprs(t_spr *a, t_spr *b)
@@ -487,22 +485,22 @@ void transform_spr(t_spr *spr, t_inf *inf)
 								inf->view.dir.x * rel_pos.y);
 	spr->transform.y = inv_det * (-inf->view.cam_plane.y * rel_pos.x +
 								inf->view.cam_plane.x * rel_pos.y);
-	spr->screen_x = (int)((WIDTH / 2) *
+	spr->screen_x = (int)((inf->width / 2) *
 					(1 + spr->transform.x / spr->transform.y));
 }
 
-void calculate_spr_range(t_spr *spr)
+void calculate_spr_range(t_spr *spr, int width, int height)
 {
-	spr->height = abs((int)(HEIGHT / spr->transform.y));
-	if ((spr->start.y = -spr->height / 2 + HEIGHT / 2) < 0)
+	spr->height = abs((int)(height / spr->transform.y));
+	if ((spr->start.y = -spr->height / 2 + height / 2) < 0)
 		spr->start.y = 0;
-	if ((spr->end.y = spr->height / 2 + HEIGHT / 2) >= HEIGHT)
-		spr->end.y = HEIGHT - 1;
+	if ((spr->end.y = spr->height / 2 + height / 2) >= height)
+		spr->end.y = height - 1;
 	spr->width = spr->height;
 	if ((spr->start.x = -spr->width / 2 + spr->screen_x) < 0)
 		spr->start.x = 0;
-	if ((spr->end.x = spr->width / 2 + spr->screen_x) >= WIDTH)
-		spr->end.x = WIDTH - 1;	
+	if ((spr->end.x = spr->width / 2 + spr->screen_x) >= width)
+		spr->end.x = width - 1;	
 }
 
 void draw_curr_spr(t_spr *spr, t_image *spr_img, t_inf *inf)
@@ -521,11 +519,11 @@ void draw_curr_spr(t_spr *spr, t_image *spr_img, t_inf *inf)
 		textr_x = (int)(spr_img->sl * (x - (-spr->width / 2 + spr->screen_x)) *
 						spr_img->width / spr->width) / spr_img->sl;
 		y = spr->start.y;
-        if (spr->transform.y > 0 && x > 0 && x < WIDTH && spr->transform.y < inf->dist_buf[x])
+        if (spr->transform.y > 0 && x > 0 && x < inf->width && spr->transform.y < inf->dist_buf[x])
         {
             while (y < spr->end.y)
 		    {
-		    	textr_y = (y - HEIGHT / 2 + spr->height / 2) * textr_step;
+		    	textr_y = (y - inf->height / 2 + spr->height / 2) * textr_step;
 		    	color = get_color(spr_img, textr_x, textr_y);
 		    	if (color != COLORLESS)
 		    		put_color(&inf->img, x, y, color);
@@ -546,7 +544,7 @@ void draw_sprs(t_inf *inf)
 	while (i < inf->num_sprs)
 	{
 		transform_spr(inf->sprs + i, inf);
-		calculate_spr_range(inf->sprs + i);
+		calculate_spr_range(inf->sprs + i, inf->width, inf->height);
 		draw_curr_spr(inf->sprs + i, &inf->textr.spr, inf);
 		i++;
 	}
@@ -557,7 +555,7 @@ int raycast(t_inf *inf)
     int screen_x;
 
     screen_x = 0;
-    while (screen_x < WIDTH)
+    while (screen_x < inf->width)
     {
         init_ray(inf, screen_x);
         calculate_step(inf);
@@ -1118,7 +1116,7 @@ int main(int argc, char **argv)
 
     inf->mlx = mlx_init();
 
-	inf->width = mlx_get_screen_size(inf->mlx, &inf->width, &inf->height);
+	mlx_get_screen_size(inf->mlx, &inf->width, &inf->height);
 
 	if (map_config_parser(inf, "../map.cub") == KO)
 	{
@@ -1126,9 +1124,14 @@ int main(int argc, char **argv)
 		close_game(inf);
 	}
 
-    inf->img.img_ptr = mlx_new_image(inf->mlx, WIDTH, HEIGHT);
-    inf->img.height = HEIGHT;
-    inf->img.width = WIDTH;
+	ft_putnbr_fd(inf->width, 1);
+	ft_putendl_fd("", 1);
+	ft_putnbr_fd(inf->height, 1);
+	ft_putendl_fd("", 1);
+	
+    inf->img.img_ptr = mlx_new_image(inf->mlx, inf->width, inf->height);
+    inf->img.height = inf->height;
+    inf->img.width = inf->width;
     inf->img.data = (int *)mlx_get_data_addr(inf->img.img_ptr,
                                         &inf->img.bpp,
                                         &inf->img.sl,
@@ -1137,7 +1140,7 @@ int main(int argc, char **argv)
     inf->color.ceil = 11656444;
     inf->color.floor = 8421504;
 
-	inf->dist_buf = (double *)ft_calloc(WIDTH, sizeof(double));
+	inf->dist_buf = (double *)ft_calloc(inf->width, sizeof(double));
 
     int	map[MAP_HEIGHT][MAP_WIDTH] =
     {
@@ -1199,15 +1202,17 @@ int main(int argc, char **argv)
         close_game(inf);        
     }
 
-    inf->win = mlx_new_window(inf->mlx, WIDTH, HEIGHT, "Test");
+    inf->win = mlx_new_window(inf->mlx, inf->width, inf->height, "Test");
 
     mlx_hook(inf->win, 17, 1L << 17, close_game, inf);
 	mlx_hook(inf->win, 2, 1L << 0, button_press, inf);
     mlx_loop_hook(inf->mlx, event_nadling, inf);
+	ft_putendl_fd("1212", 1);
 	mlx_hook(inf->win, 3, 1L << 1, button_release, inf);
-    mlx_loop(inf->mlx);
+	ft_putendl_fd("1214", 1);
+	mlx_loop(inf->mlx);
 
     return 0;
 }
-
+// gcc -Werror -Wextra -Wall ../get_next_line/get_next_line.c ../get_next_line/get_next_line_utils.c test.c -L ../minilibx/ -lmlx -L ../libft/ -lft -lm -lX11 -lbsd -lXext -D BUFFER_SIZE=100
 // gcc -Werror -Wextra -Wall test.c -L ../minilibx/ -lmlx -L ../libft/ -lft -lm -lX11 -lbsd -lXext
