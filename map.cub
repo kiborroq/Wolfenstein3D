@@ -1,25 +1,26 @@
-C 177  ,   220 ,   252
+ 
 
-    
+NO      ../txtrs/nord.xpm     
 
-R  2147483 2147483
-
-
-NO      ../txtrs/nord.xpm                   
-
+		
+						
 
 SO ../txtrs/south.xpm
 
 EA          ../txtrs/east.xpm
 
-
+F 0055   , 0054   ,    	        00054        			
 
 WE                  ../txtrs/west.xpm
-
-S           ../txtrs/lamp.xpm               
-F  000, 000, 00
+S           ../txtrs/lamp.xpm
 
 
+R  1920 1080
+
+
+
+
+C                       000177         ,   0220             ,   252
 
 111111111111111111111111111111
 111111111000200000000000011111

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   test.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
+/*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2021/01/10 23:45:09 by kiborroq         ###   ########.fr       */
+/*   Updated: 2021/01/11 14:43:10 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@
 #define TEXTURE_ERROR "Error in texture or sprite elem"
 #define RESOLUTION_ERROR "Error in resolution elem"
 #define UNKNOWN_ELEM "Unknown config elem"
+#define ELEM_REPAET "Config elem repeat"
 
 #define MAP_HEIGHT 24
 #define MAP_WIDTH 24
@@ -194,6 +195,8 @@ typedef struct  s_inf
 	char			*message;
 	int				width;
 	int				height;
+    int				max_width;
+	int				max_height;
 }                   t_inf;
 
 void    put_color(t_image *img, int x, int y, int color)
@@ -894,10 +897,15 @@ char *skip_spaces(char *str)
 	return (str);
 }
 
-int	add_textr_wrap(void *mlx, t_image *textr, char *path, char *elem)
+int	add_textr_wrap(t_inf *inf, t_image *textr, char *path, char *elem)
 {
 	if (path > elem)
-		return (add_textr(mlx, textr, path));
+    {
+        if (textr->img_ptr == 0)
+		    return (add_textr(inf->mlx, textr, path));
+        else
+            inf->message = ELEM_REPAET;
+    }
 	return (KO);
 }
 
@@ -909,19 +917,19 @@ int	init_textr(t_inf *inf, char *elem)
 	status = 0;
 	path = skip_spaces(elem + 2);
 	if (!ft_strncmp(elem, "EA", 2))
-		status = add_textr_wrap(inf->mlx, &inf->textr.e_side, path, elem + 2);
+		status = add_textr_wrap(inf, &inf->textr.e_side, path, elem + 2);
 	else if (!ft_strncmp(elem, "WE", 2))
-		status = add_textr_wrap(inf->mlx, &inf->textr.w_side, path, elem + 2);
+		status = add_textr_wrap(inf, &inf->textr.w_side, path, elem + 2);
 	else if (!ft_strncmp(elem, "SO", 2))
-		status = add_textr_wrap(inf->mlx, &inf->textr.s_side, path, elem + 2);
+		status = add_textr_wrap(inf, &inf->textr.s_side, path, elem + 2);
 	else if (!ft_strncmp(elem, "NO", 2))
-		status = add_textr_wrap(inf->mlx, &inf->textr.n_side, path, elem + 2);
+		status = add_textr_wrap(inf, &inf->textr.n_side, path, elem + 2);
 	else if (!ft_strncmp(elem, "S", 1))
 	{
 		path = skip_spaces(elem + 1);
-		status = add_textr_wrap(inf->mlx, &inf->textr.spr, path, elem + 1);
+		status = add_textr_wrap(inf, &inf->textr.spr, path, elem + 1);
 	}
-	if (status == KO)
+	if (status == KO && inf->message == 0)
 		inf->message = TEXTURE_ERROR;
 	return (status);
 }
@@ -968,15 +976,31 @@ int	init_rgb(t_inf *inf, char *elem)
 
 	status = 0;
 	if (elem[0] == 'F')
-		status = add_rgb(&inf->color.floor, elem + 1);
+    {
+        if (inf->color.floor == 0)
+		    status = add_rgb(&inf->color.floor, elem + 1);
+        else
+        {
+            status = KO;
+            inf->message = ELEM_REPAET;
+        }
+    }
 	else if (elem[0] == 'C')
-		status = add_rgb(&inf->color.ceil, elem + 1);
-	if (status == KO)
+    {
+        if (inf->color.ceil == 0)
+		    status = add_rgb(&inf->color.ceil, elem + 1);
+        else
+        {
+            status = KO;
+            inf->message = ELEM_REPAET;
+        }
+    }
+	if (status == KO && inf->message == 0)
 		inf->message = COLOR_ERROR;
 	return (status);
 }
 
-int	add_resltn(int *width, int *height, char *resltn)
+int	add_resltn(int max_width, int max_height, int *width, int *height, char *resltn)
 {
 	int i;
 	int num;
@@ -994,9 +1018,9 @@ int	add_resltn(int *width, int *height, char *resltn)
 			break;
 		resltn = curr;
 		if (i == 0)
-			*width = num > *width ? *width : num;
+			*width = num > max_width ? max_width : num;
 		else
-			*height = num > *height ? *height : num;
+			*height = num > max_height ? max_height : num;
 		i++;
 	}
 	if (i < 2 || *resltn)
@@ -1010,8 +1034,17 @@ int	init_resltn(t_inf *inf, char *elem)
 
 	status = 0;
 	if (elem[0] == 'R')
-		status = add_resltn(&inf->width, &inf->height, elem + 1);
-	if (status == KO)
+    {
+        if (inf->width == 0 && inf->height == 0)
+		    status = add_resltn(inf->max_width, inf->max_height, 
+                                &inf->width, &inf->height, elem + 1);
+        else
+        {
+            status = KO;
+            inf->message = ELEM_REPAET;
+        }
+    }
+	if (status == KO && inf->message == 0)
 		inf->message = RESOLUTION_ERROR;
 	return (status);
 }
@@ -1020,11 +1053,34 @@ int ismap(char *elem)
 {
 	while (*elem)
 	{
-		if (*elem != ' ' && *elem != '0' && *elem != '1' && *elem != '2')
+		if (*elem != ' ' && *elem != '0' && *elem != '1' && *elem != '2' &&
+            *elem != 'N' && *elem != 'W' && *elem != 'S' && *elem != 'E')
+        {
 			return (0);
+        }
 		elem++;
 	}
 	return (1);
+}
+
+int check_elem(t_inf *inf, char *elem)
+{
+    int status;
+
+    elem = skip_spaces(elem);
+	if (*elem == '\0')
+		status = 0;
+	else if (ismap(elem))
+	{
+		status = KO;
+		inf->message = NOT_ENOUGH_CONFIG;
+	}
+	else
+	{
+		status = KO;
+		inf->message = UNKNOWN_ELEM;
+	}
+    return (status);
 }
 
 int	init_textr_rgb_resltn(char *elem, t_inf *inf)
@@ -1038,21 +1094,7 @@ int	init_textr_rgb_resltn(char *elem, t_inf *inf)
 	else if (status != KO && (status = init_resltn(inf, elem)) == OK)
 		return (OK);
 	else if (status != KO)
-	{
-		elem = skip_spaces(elem);
-		if (*elem == '\0')
-			status = 0;
-		else if (ismap(elem))
-		{
-			status = KO;
-			inf->message = NOT_ENOUGH_CONFIG;
-		}
-		else
-		{
-			status = KO;
-			inf->message = UNKNOWN_ELEM;
-		}
-	}
+        status = check_elem(inf, elem);
 	return (status);
 }
 
@@ -1093,19 +1135,27 @@ int map_config_parser(t_inf *inf, char *map_path)
 
 	if ((fd = open(map_path, O_RDONLY)) == KO)
 		return (KO);
+    ft_putstr_fd("Config elems parsing: ", 1);
 	if ((status = config_parser(fd, inf)) != KO)
-		ft_putstr_fd("", 1);
+    {
+		ft_putendl_fd("OK", 1);
+        ft_putstr_fd("Map parsing: ", 1);
 		// status = map_parser(fd, inf);
+		ft_putendl_fd("OK", 1);
+    }
 	close(fd);
 	return (status);
 }
 
 void print_error_message(int line, char *message)
 {
-	ft_putstr_fd("line ", 1);
-	ft_putnbr_fd(line, 1);
-	ft_putstr_fd(": ", 1);
-	ft_putendl_fd(message, 1);
+    if (line != 0)
+    {
+	    ft_putstr_fd("line ", 1);
+	    ft_putnbr_fd(line, 1);
+	    ft_putstr_fd(" -> ", 1);
+    }
+    ft_putendl_fd(message, 1);
 }
 
 int main(int argc, char **argv)
@@ -1116,18 +1166,13 @@ int main(int argc, char **argv)
 
     inf->mlx = mlx_init();
 
-	mlx_get_screen_size(inf->mlx, &inf->width, &inf->height);
+	mlx_get_screen_size(inf->mlx, &inf->max_width, &inf->max_height);
 
 	if (map_config_parser(inf, "../map.cub") == KO)
 	{
 		print_error_message(inf->map_line, inf->message);
 		close_game(inf);
 	}
-
-	ft_putnbr_fd(inf->width, 1);
-	ft_putendl_fd("", 1);
-	ft_putnbr_fd(inf->height, 1);
-	ft_putendl_fd("", 1);
 	
     inf->img.img_ptr = mlx_new_image(inf->mlx, inf->width, inf->height);
     inf->img.height = inf->height;
@@ -1136,9 +1181,7 @@ int main(int argc, char **argv)
                                         &inf->img.bpp,
                                         &inf->img.sl,
                                         &inf->img.endian);
-    
-    inf->color.ceil = 11656444;
-    inf->color.floor = 8421504;
+
 
 	inf->dist_buf = (double *)ft_calloc(inf->width, sizeof(double));
 
@@ -1202,14 +1245,12 @@ int main(int argc, char **argv)
         close_game(inf);        
     }
 
-    inf->win = mlx_new_window(inf->mlx, inf->width, inf->height, "Test");
+    inf->win = mlx_new_window(inf->mlx, inf->width, inf->height, "cub3d");
 
     mlx_hook(inf->win, 17, 1L << 17, close_game, inf);
 	mlx_hook(inf->win, 2, 1L << 0, button_press, inf);
     mlx_loop_hook(inf->mlx, event_nadling, inf);
-	ft_putendl_fd("1212", 1);
 	mlx_hook(inf->win, 3, 1L << 1, button_release, inf);
-	ft_putendl_fd("1214", 1);
 	mlx_loop(inf->mlx);
 
     return 0;
