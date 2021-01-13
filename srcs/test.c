@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2021/01/11 14:43:10 by kiborroq         ###   ########.fr       */
+/*   Updated: 2021/01/13 16:56:38 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #define NUM_ELEMS 8
 #define SPACES " \n\t\v\r\f"
 
+#define READEING_ERROR "Eror during file reading"
 #define NOT_ENOUGH_MEMORY "Not enough memory for allocation"
 #define NOT_ENOUGH_CONFIG "Map start but not all config elems are defined"
 #define COLOR_ERROR "Error in color elem"
@@ -23,11 +24,14 @@
 #define RESOLUTION_ERROR "Error in resolution elem"
 #define UNKNOWN_ELEM "Unknown config elem"
 #define ELEM_REPAET "Config elem repeat"
+#define INVALID_MAP "Invalid map"
+
+#define FIRST_LAST_LINE " 1"
+#define OTHER_LINE " 012NSWE"
+#define START_POS "NSWE"
 
 #define MAP_HEIGHT 24
 #define MAP_WIDTH 24
-#define textr_HEIGHT 64
-#define textr_WIDTH 64
 
 #define WALL 1
 #define SPRITE 2
@@ -185,18 +189,22 @@ typedef struct  s_inf
     int             **map;
     t_event         event;
     t_textr         textr;
-    t_image         test;
     t_color         color;
     t_image         curr_textr;
     t_spr           *sprs;
     int             num_sprs;
 	double			*dist_buf;
-	int				map_line;
+	int				num_line;
+	int				start_map;
 	char			*message;
 	int				width;
 	int				height;
     int				max_width;
 	int				max_height;
+	int				map_height;
+	int				map_width;
+	char			*line;
+	t_list			*maplst;
 }                   t_inf;
 
 void    put_color(t_image *img, int x, int y, int color)
@@ -255,71 +263,75 @@ int get_textr_x(t_inf *inf, double wall_x)
 
 void draw_wall(t_inf *inf, int screen_x)
 {
-    double          wall_x;
-    int             textr_x;
-    double          textr_step;
-    double          textr_y_pos;
-    int             textr_y;
-    int             screen_y;
-    int             color;
+	double	wall_x;
+	int		textr_x;
+	double	textr_step;
+	double	textr_y_pos;
+	int		textr_y;
+	int		screen_y;
+	int		color;
 
-    set_curr_textr(inf);
-    wall_x = get_wall_x(inf);
-    textr_x = get_textr_x(inf, wall_x);
-    textr_step = 1.0 * inf->curr_textr.height / inf->ray.wall_height;
-    textr_y_pos = (inf->ray.wall_start - inf->height / 2 + inf->ray.wall_height / 2) * textr_step;
-    screen_y = inf->ray.wall_start;
-    while (screen_y < inf->ray.wall_end)
-    {
-        textr_y = (int)textr_y_pos & (inf->curr_textr.height - 1);
-        color = get_color(&inf->curr_textr, textr_x, textr_y);
-        put_color(&inf->img, screen_x, screen_y, color);
-        textr_y_pos += textr_step;
-        screen_y++;
-    }
+	set_curr_textr(inf);
+	wall_x = get_wall_x(inf);
+	textr_x = get_textr_x(inf, wall_x);
+	textr_step = 1.0 * inf->curr_textr.height / inf->ray.wall_height;
+	textr_y_pos = (inf->ray.wall_start - inf->height / 2 + inf->ray.wall_height / 2) * textr_step;
+	screen_y = inf->ray.wall_start;
+	while (screen_y < inf->ray.wall_end)
+	{
+		textr_y = (int)textr_y_pos & (inf->curr_textr.height - 1);
+		color = get_color(&inf->curr_textr, textr_x, textr_y);
+		put_color(&inf->img, screen_x, screen_y, color);
+		textr_y_pos += textr_step;
+		screen_y++;
+	}
 }
 
 void init_ray(t_inf *inf, int screen_x)
 {
-    double pos_on_plane;
+	double pos_on_plane;
 
-    pos_on_plane = 2 * screen_x / (double)inf->width - 1;
-    inf->ray.dir.x = inf->view.dir.x + pos_on_plane * inf->view.cam_plane.x;
-    inf->ray.dir.y = inf->view.dir.y + pos_on_plane * inf->view.cam_plane.y;
-    inf->ray.pos.x = (int)inf->view.pos.x;
-    inf->ray.pos.y = (int)inf->view.pos.y;
-    if (inf->ray.dir.y != 0)
-        inf->ray.delt_dist.x = inf->ray.dir.x == 0 ? 1 : fabs(1 / inf->ray.dir.x);
-    else
-        inf->ray.delt_dist.x = 0;
-    if (inf->ray.dir.x != 0)
-        inf->ray.delt_dist.y = inf->ray.dir.y == 0 ? 1 : fabs(1 / inf->ray.dir.y);
-    else
-        inf->ray.delt_dist.y = 0;
+	pos_on_plane = 2 * screen_x / (double)inf->width - 1;
+	inf->ray.dir.x = inf->view.dir.x + pos_on_plane * inf->view.cam_plane.x;
+	inf->ray.dir.y = inf->view.dir.y + pos_on_plane * inf->view.cam_plane.y;
+	inf->ray.pos.x = (int)inf->view.pos.x;
+	inf->ray.pos.y = (int)inf->view.pos.y;
+	if (inf->ray.dir.y != 0)
+		inf->ray.delt_dist.x = inf->ray.dir.x == 0 ? 1 : fabs(1 / inf->ray.dir.x);
+	else
+		inf->ray.delt_dist.x = 0;
+	if (inf->ray.dir.x != 0)
+		inf->ray.delt_dist.y = inf->ray.dir.y == 0 ? 1 : fabs(1 / inf->ray.dir.y);
+	else
+		inf->ray.delt_dist.y = 0;
 }
 
 void calculate_step(t_inf *inf)
 {
-    if (inf->ray.dir.x < 0)
-    {
-        inf->ray.step.x = -1;
-        inf->ray.cur_dist.x = (inf->view.pos.x - inf->ray.pos.x) *inf->ray.delt_dist.x;
-    }
-    else
-    {
-        inf->ray.step.x = 1;
-        inf->ray.cur_dist.x = (inf->ray.pos.x + 1.0 - inf->view.pos.x) * inf->ray.delt_dist.x;
-    }
-    if (inf->ray.dir.y < 0)
-    {
-        inf->ray.step.y = -1;
-        inf->ray.cur_dist.y = (inf->view.pos.y - inf->ray.pos.y) *  inf->ray.delt_dist.y;
-    }
-    else
-    {
-        inf->ray.step.y = 1;
-        inf->ray.cur_dist.y = (inf->ray.pos.y + 1.0 - inf->view.pos.y) *  inf->ray.delt_dist.y;
-    }
+	if (inf->ray.dir.x < 0)
+	{
+		inf->ray.step.x = -1;
+		inf->ray.cur_dist.x = (inf->view.pos.x - inf->ray.pos.x) *
+							inf->ray.delt_dist.x;
+	}
+	else
+	{
+		inf->ray.step.x = 1;
+		inf->ray.cur_dist.x = (inf->ray.pos.x + 1.0 - inf->view.pos.x) *
+							inf->ray.delt_dist.x;
+	}
+	if (inf->ray.dir.y < 0)
+	{
+		inf->ray.step.y = -1;
+		inf->ray.cur_dist.y = (inf->view.pos.y - inf->ray.pos.y) *
+							inf->ray.delt_dist.y;
+	}
+	else
+	{
+		inf->ray.step.y = 1;
+		inf->ray.cur_dist.y = (inf->ray.pos.y + 1.0 - inf->view.pos.y) *
+							inf->ray.delt_dist.y;
+	}
 }
 
 void reset_sprs(t_spr *sprs, int *num_actual_sprs)
@@ -362,64 +374,64 @@ void count_dist_to_spr(t_inf *inf)
 
 void calculate_dist_to_wall(t_inf *inf, int screen_x)
 {
-    while (1)
-    {
-        if (inf->ray.cur_dist.x < inf->ray.cur_dist.y)
-        {
-            inf->ray.cur_dist.x += inf->ray.delt_dist.x;
-            inf->ray.pos.x += inf->ray.step.x;
-            inf->ray.hit_side = 0;
-        }
-        else
-        {
-            inf->ray.cur_dist.y += inf->ray.delt_dist.y;
-            inf->ray.pos.y += inf->ray.step.y;
-            inf->ray.hit_side = 1;
-        }
-        if (inf->map[inf->ray.pos.x][inf->ray.pos.y] == WALL)
-            break;
-    }
-    if (inf->ray.hit_side == 0)
-        inf->ray.dist = (inf->ray.pos.x - inf->view.pos.x +
-                        (1 - inf->ray.step.x) / 2) / inf->ray.dir.x;
-    else
+	while (1)
 	{
-        inf->ray.dist = (inf->ray.pos.y - inf->view.pos.y +
-                        (1 - inf->ray.step.y) / 2) / inf->ray.dir.y;
+		if (inf->ray.cur_dist.x < inf->ray.cur_dist.y)
+		{
+			inf->ray.cur_dist.x += inf->ray.delt_dist.x;
+			inf->ray.pos.x += inf->ray.step.x;
+			inf->ray.hit_side = 0;
+		}
+		else
+		{
+			inf->ray.cur_dist.y += inf->ray.delt_dist.y;
+			inf->ray.pos.y += inf->ray.step.y;
+			inf->ray.hit_side = 1;
+		}
+		if (inf->map[inf->ray.pos.x][inf->ray.pos.y] == WALL)
+			break;
+	}
+	if (inf->ray.hit_side == 0)
+		inf->ray.dist = (inf->ray.pos.x - inf->view.pos.x +
+						(1 - inf->ray.step.x) / 2) / inf->ray.dir.x;
+	else
+	{
+		inf->ray.dist = (inf->ray.pos.y - inf->view.pos.y +
+						(1 - inf->ray.step.y) / 2) / inf->ray.dir.y;
 	}
 	inf->dist_buf[screen_x] = inf->ray.dist;
 }
 
 void calculate_wall_range(t_inf *inf)
 {
-    int height;
-    int start;
-    int end;
+	int height;
+	int start;
+	int end;
 
-    height = (int)(inf->height / inf->ray.dist);
-    if ((start = -height / 2 + inf->height / 2) < 0)
-        start = 0;
-    if ((end = height / 2 + inf->height / 2) >= inf->height)
-        end = inf->height - 1;
-    inf->ray.wall_height = height;
-    inf->ray.wall_start = start;
-    inf->ray.wall_end = end;
+	height = (int)(inf->height / inf->ray.dist);
+	if ((start = -height / 2 + inf->height / 2) < 0)
+		start = 0;
+	if ((end = height / 2 + inf->height / 2) >= inf->height)
+		end = inf->height - 1;
+	inf->ray.wall_height = height;
+	inf->ray.wall_start = start;
+	inf->ray.wall_end = end;
 }
 
 void draw_color_range(t_inf *inf, int x, int start_y, int end_y, int color)
 {
-    while (start_y <= end_y)
-    {
-        put_color(&inf->img, x, start_y, color);
-        start_y++;
-    }
+	while (start_y <= end_y)
+	{
+		put_color(&inf->img, x, start_y, color);
+		start_y++;
+	}
 }
 
 void draw_stripe(t_inf *inf, int screen_x)
 {
-    draw_color_range(inf, screen_x, 0, inf->ray.wall_start - 1, inf->color.ceil);
-    draw_wall(inf, screen_x);
-    draw_color_range(inf, screen_x, inf->ray.wall_end, inf->height - 1, inf->color.floor);
+	draw_color_range(inf, screen_x, 0, inf->ray.wall_start - 1, inf->color.ceil);
+	draw_wall(inf, screen_x);
+	draw_color_range(inf, screen_x, inf->ray.wall_end, inf->height - 1, inf->color.floor);
 }
 
 void swap_sprs(t_spr *a, t_spr *b)
@@ -460,7 +472,6 @@ void sort_sprs(t_spr *sprs, int num_sprs)
 	int i;
 	int j;
 
-
 	i = 0;
 	while (i + 1 < num_sprs)
 	{
@@ -479,7 +490,7 @@ void transform_spr(t_spr *spr, t_inf *inf)
 {
 	t_point_d rel_pos;
 	double inv_det;
-	
+
 	rel_pos.x = spr->abs_pos.x - inf->view.pos.x;
 	rel_pos.y = spr->abs_pos.y - inf->view.pos.y;
 	inv_det = 1.0 / (inf->view.cam_plane.x * inf->view.dir.y -
@@ -516,23 +527,24 @@ void draw_curr_spr(t_spr *spr, t_image *spr_img, t_inf *inf)
 	int color;
 
 	x = spr->start.x;
-    textr_step = 1.0 * spr_img->height / spr->height;
+	textr_step = 1.0 * spr_img->height / spr->height;
 	while (x < spr->end.x)
 	{
 		textr_x = (int)(spr_img->sl * (x - (-spr->width / 2 + spr->screen_x)) *
 						spr_img->width / spr->width) / spr_img->sl;
 		y = spr->start.y;
-        if (spr->transform.y > 0 && x > 0 && x < inf->width && spr->transform.y < inf->dist_buf[x])
-        {
-            while (y < spr->end.y)
-		    {
-		    	textr_y = (y - inf->height / 2 + spr->height / 2) * textr_step;
-		    	color = get_color(spr_img, textr_x, textr_y);
-		    	if (color != COLORLESS)
-		    		put_color(&inf->img, x, y, color);
-		    	y++;
-		    }
-        }
+		if (spr->transform.y > 0 && x > 0 && x < inf->width &&
+			spr->transform.y < inf->dist_buf[x])
+		{
+			while (y < spr->end.y)
+			{
+				textr_y = (y - inf->height / 2 + spr->height / 2) * textr_step;
+				color = get_color(spr_img, textr_x, textr_y);
+				if (color != COLORLESS)
+					put_color(&inf->img, x, y, color);
+				y++;
+			}
+		}
 		x++;
 	}
 }
@@ -555,18 +567,18 @@ void draw_sprs(t_inf *inf)
 
 int raycast(t_inf *inf)
 {
-    int screen_x;
+	int screen_x;
 
-    screen_x = 0;
-    while (screen_x < inf->width)
-    {
-        init_ray(inf, screen_x);
-        calculate_step(inf);
-        calculate_dist_to_wall(inf, screen_x);
-        calculate_wall_range(inf);
-        draw_stripe(inf, screen_x);
-        screen_x++;
-    }
+	screen_x = 0;
+	while (screen_x < inf->width)
+	{
+		init_ray(inf, screen_x);
+		calculate_step(inf);
+		calculate_dist_to_wall(inf, screen_x);
+		calculate_wall_range(inf);
+		draw_stripe(inf, screen_x);
+		screen_x++;
+	}
 	draw_sprs(inf);
 	return (1);
 }
@@ -587,50 +599,50 @@ int **fill_map(int map[MAP_HEIGHT][MAP_WIDTH])
 
 void move_for_back(t_inf *inf, double dir)
 {
-    double delta;
+	double delta;
 
-    delta = inf->view.dir.x * MOVE_SPEED * dir;
-    if (inf->map[(int)(inf->view.pos.x + delta * 2)][(int)inf->view.pos.y] == 0)
-    {
-        inf->view.pos.x += delta;
-    }
-    delta = inf->view.dir.y * MOVE_SPEED * dir;
-    if (inf->map[(int)inf->view.pos.x][(int)(inf->view.pos.y + delta * 2)] == 0)
-    {
-        inf->view.pos.y += delta;
-    }
+	delta = inf->view.dir.x * MOVE_SPEED * dir;
+	if (!inf->map[(int)(inf->view.pos.x + delta * 2)][(int)inf->view.pos.y])
+	{
+		inf->view.pos.x += delta;
+	}
+	delta = inf->view.dir.y * MOVE_SPEED * dir;
+	if (!inf->map[(int)inf->view.pos.x][(int)(inf->view.pos.y + delta * 2)])
+	{
+		inf->view.pos.y += delta;
+	}
 }
 
 void move_left_right(t_inf *inf, double dir)
 {
-    double delta;
+	double delta;
 
-    delta = inf->view.dir.y * MOVE_SPEED * dir;
-    if (inf->map[(int)(inf->view.pos.x - delta * 2)][(int)inf->view.pos.y] == 0)
-    {
-        inf->view.pos.x -= delta;
-    }
-    delta = inf->view.dir.x * MOVE_SPEED * dir;
-    if (inf->map[(int)inf->view.pos.x][(int)(inf->view.pos.y + delta * 2)] == 0)
-    {
-        inf->view.pos.y += delta;
-    }
+	delta = inf->view.dir.y * MOVE_SPEED * dir;
+	if (!inf->map[(int)(inf->view.pos.x - delta * 2)][(int)inf->view.pos.y])
+	{
+		inf->view.pos.x -= delta;
+	}
+	delta = inf->view.dir.x * MOVE_SPEED * dir;
+	if (!inf->map[(int)inf->view.pos.x][(int)(inf->view.pos.y + delta * 2)])
+	{
+		inf->view.pos.y += delta;
+	}
 }
 
 void turn_left_right(t_inf *inf, double turn_sin, double turn_cos)
 {
-    double old_x;
+	double old_x;
 
-    old_x = inf->view.dir.x;
-    inf->view.dir.x =       inf->view.dir.x * turn_cos -
-                            inf->view.dir.y * turn_sin;
-    inf->view.dir.y =       inf->view.dir.y * turn_cos +
-                            old_x * turn_sin;
-    old_x = inf->view.cam_plane.x;
-    inf->view.cam_plane.x = inf->view.cam_plane.x * turn_cos -
-                            inf->view.cam_plane.y * turn_sin;
-    inf->view.cam_plane.y = inf->view.cam_plane.y * turn_cos +
-                            old_x * turn_sin;
+	old_x = inf->view.dir.x;
+	inf->view.dir.x =       inf->view.dir.x * turn_cos -
+							inf->view.dir.y * turn_sin;
+	inf->view.dir.y =       inf->view.dir.y * turn_cos +
+							old_x * turn_sin;
+	old_x = inf->view.cam_plane.x;
+	inf->view.cam_plane.x = inf->view.cam_plane.x * turn_cos -
+							inf->view.cam_plane.y * turn_sin;
+	inf->view.cam_plane.y = inf->view.cam_plane.y * turn_cos +
+							old_x * turn_sin;
 }
 
 void free_array(void **array, int height)
@@ -647,27 +659,37 @@ void free_array(void **array, int height)
 			i++;
 		}
 		free(array);
+		array = 0;
 	}
 }
 
 void destroy_mlx_elems(t_inf *inf)
 {
-    if (inf->textr.e_side.img_ptr)
-        mlx_destroy_image(inf->mlx, inf->textr.e_side.img_ptr);
-    if (inf->textr.w_side.img_ptr)
-        mlx_destroy_image(inf->mlx, inf->textr.w_side.img_ptr);
-    if (inf->textr.s_side.img_ptr)
-        mlx_destroy_image(inf->mlx, inf->textr.s_side.img_ptr);
-    if (inf->textr.n_side.img_ptr)
-        mlx_destroy_image(inf->mlx, inf->textr.n_side.img_ptr);
-    if (inf->textr.spr.img_ptr)
-        mlx_destroy_image(inf->mlx, inf->textr.spr.img_ptr);
-    if (inf->img.img_ptr)
-        mlx_destroy_image(inf->mlx, inf->img.img_ptr);
-    if (inf->win)
-        mlx_destroy_window(inf->mlx, inf->win);
-    if (inf->mlx)
-        free(inf->mlx);
+	if (inf->textr.e_side.img_ptr)
+		mlx_destroy_image(inf->mlx, inf->textr.e_side.img_ptr);
+	if (inf->textr.w_side.img_ptr)
+		mlx_destroy_image(inf->mlx, inf->textr.w_side.img_ptr);
+	if (inf->textr.s_side.img_ptr)
+		mlx_destroy_image(inf->mlx, inf->textr.s_side.img_ptr);
+	if (inf->textr.n_side.img_ptr)
+		mlx_destroy_image(inf->mlx, inf->textr.n_side.img_ptr);
+	if (inf->textr.spr.img_ptr)
+		mlx_destroy_image(inf->mlx, inf->textr.spr.img_ptr);
+	if (inf->img.img_ptr)
+		mlx_destroy_image(inf->mlx, inf->img.img_ptr);
+	if (inf->win)
+		mlx_destroy_window(inf->mlx, inf->win);
+	if (inf->mlx)
+		free(inf->mlx);
+}
+
+void free_ptr(void **ptr)
+{
+	if (ptr && *ptr)
+	{
+		free(*ptr);
+		*ptr = 0;
+	}
 }
 
 void	free_ptrs(void **p1, void **p2, void **p3)
@@ -691,98 +713,98 @@ void	free_ptrs(void **p1, void **p2, void **p3)
 
 int close_game(t_inf *inf)
 {
-    destroy_mlx_elems(inf);
-    free_array((void **)inf->map, MAP_WIDTH);
-    free_ptrs((void **)&inf->sprs, (void **)&inf->dist_buf, (void **)&inf);
-    exit (1);
-    return (0);
+	destroy_mlx_elems(inf);
+	free_array((void **)inf->map, MAP_WIDTH);
+	free_ptrs((void **)&inf->sprs, (void **)&inf->dist_buf, (void **)&inf);
+	exit (1);
+	return (0);
 }
 
 int event_nadling(t_inf *inf)
 {
-    raycast(inf);
-    mlx_put_image_to_window(inf->mlx, inf->win, inf->img.img_ptr, 0 , 0);
-    if (inf->event.move_forawrd == 1)
-        move_for_back(inf, 1.0);
-    if (inf->event.move_backword == 1)
-        move_for_back(inf, -1.0);
-    if (inf->event.move_left == 1)
-        move_left_right(inf, 1.0);
-    if (inf->event.move_right == 1)
-        move_left_right(inf, -1.0);
-    if (inf->event.turn_left == 1)
-        turn_left_right(inf, inf->turn.sin_pozotive, inf->turn.cos_pozitive);
-    if (inf->event.turn_right == 1)
-        turn_left_right(inf, inf->turn.sin_negative, inf->turn.cos_negative);
-    return (0);
+	raycast(inf);
+	mlx_put_image_to_window(inf->mlx, inf->win, inf->img.img_ptr, 0 , 0);
+	if (inf->event.move_forawrd == 1)
+		move_for_back(inf, 1.0);
+	if (inf->event.move_backword == 1)
+		move_for_back(inf, -1.0);
+	if (inf->event.move_left == 1)
+		move_left_right(inf, 1.0);
+	if (inf->event.move_right == 1)
+		move_left_right(inf, -1.0);
+	if (inf->event.turn_left == 1)
+		turn_left_right(inf, inf->turn.sin_pozotive, inf->turn.cos_pozitive);
+	if (inf->event.turn_right == 1)
+		turn_left_right(inf, inf->turn.sin_negative, inf->turn.cos_negative);
+	return (0);
 }
 
 int button_release(int event_button, t_inf *inf)
 {
-    if (event_button == MOVE_FORWARD)
-       inf->event.move_forawrd = 0;
-    else if (event_button == MOVE_BACKWARD)
-       inf->event.move_backword = 0;
-    else if (event_button == MOVE_LEFT)
-        inf->event.move_left = 0;
-    else if (event_button == MOVE_RIGHT)
-        inf->event.move_right = 0;
-    else if (event_button == TURN_LEFT)
-        inf->event.turn_left = 0;
-    else if (event_button == TURN_RIGHT)
-        inf->event.turn_right = 0;
-    return (0);
+	if (event_button == MOVE_FORWARD)
+		inf->event.move_forawrd = 0;
+	else if (event_button == MOVE_BACKWARD)
+		inf->event.move_backword = 0;
+	else if (event_button == MOVE_LEFT)
+		inf->event.move_left = 0;
+	else if (event_button == MOVE_RIGHT)
+		inf->event.move_right = 0;
+	else if (event_button == TURN_LEFT)
+		inf->event.turn_left = 0;
+	else if (event_button == TURN_RIGHT)
+		inf->event.turn_right = 0;
+	return (0);
 }
 
 int button_press(int event_button, t_inf *inf)
 {
-    if (event_button == MOVE_FORWARD)
-        inf->event.move_forawrd = 1;
-    else if (event_button == MOVE_BACKWARD)
-        inf->event.move_backword = 1;
-    else if (event_button == MOVE_LEFT)
-        inf->event.move_left = 1;
-    else if (event_button == MOVE_RIGHT)
-        inf->event.move_right = 1;
-    else if (event_button == TURN_LEFT)
-        inf->event.turn_left = 1;
-    else if (event_button == TURN_RIGHT)
-        inf->event.turn_right = 1;
-    else if (event_button == EXIT)
-        close_game(inf);
-    return (0);
+	if (event_button == MOVE_FORWARD)
+		inf->event.move_forawrd = 1;
+	else if (event_button == MOVE_BACKWARD)
+		inf->event.move_backword = 1;
+	else if (event_button == MOVE_LEFT)
+		inf->event.move_left = 1;
+	else if (event_button == MOVE_RIGHT)
+		inf->event.move_right = 1;
+	else if (event_button == TURN_LEFT)
+		inf->event.turn_left = 1;
+	else if (event_button == TURN_RIGHT)
+		inf->event.turn_right = 1;
+	else if (event_button == EXIT)
+		close_game(inf);
+	return (0);
 }
 
 int num_digits(int **array, int array_height, int array_width, int dig)
 {
-    int i;
-    int j;
-    int num;
+	int i;
+	int j;
+	int num;
 
-    i = 0;
-    num = 0;
-    while (i < array_height)
-    {
+	i = 0;
+	num = 0;
+	while (i < array_height)
+	{
 		j = 0;
-        while (j < array_width)
-        {
-            if (array[i][j] == dig)
-                num++;
-            j++;
-        }
-        i++;
-    }
-    return (num);
+		while (j < array_width)
+		{
+			if (array[i][j] == dig)
+				num++;
+			j++;
+		}
+		i++;
+	}
+	return (num);
 }
 
 int init_sprs(t_inf *inf)
 {
-    int         x;
-    int         y;
-	int			i;
+	int	x;
+	int	y;
+	int	i;
 
-    inf->num_sprs = num_digits(inf->map, MAP_HEIGHT, MAP_WIDTH, SPRITE);
-    if (!(inf->sprs = (t_spr *)malloc(inf->num_sprs * sizeof(t_spr))))
+	inf->num_sprs = num_digits(inf->map, MAP_HEIGHT, MAP_WIDTH, SPRITE);
+	if (!(inf->sprs = (t_spr *)malloc(inf->num_sprs * sizeof(t_spr))))
 		return (KO);
 	x = 0;
 	i = 0;
@@ -790,16 +812,16 @@ int init_sprs(t_inf *inf)
 	{
 		y = 0;
 		while (y < MAP_WIDTH && i < inf->num_sprs)
-        {
-            if (inf->map[x][y] == SPRITE)
+		{
+			if (inf->map[x][y] == SPRITE)
 			{
-				inf->sprs[i].abs_pos.x = x + .5;
-				inf->sprs[i].abs_pos.y = y + .5;
-				inf->sprs[i].dist = .0;
+				inf->sprs[i].abs_pos.x = x + 0.5;
+				inf->sprs[i].abs_pos.y = y + 0.5;
+				inf->sprs[i].dist = 0.0;
 				i++;
 			}
-            y++;
-        }
+			y++;
+		}
 		x++;
 	}
 	return (OK);
@@ -807,15 +829,16 @@ int init_sprs(t_inf *inf)
 
 int add_textr(void *mlx, t_image *textr, char *path)
 {
-    if (!(textr->img_ptr = mlx_xpm_file_to_image(mlx, path, &textr->width, &textr->height)))
-    {
-        return (KO);
-    }
-    textr->data = (int *)mlx_get_data_addr(textr->img_ptr,
-                                            &textr->bpp,
-                                            &textr->sl,
-                                            &textr->endian);
-    return (OK);
+	if (!(textr->img_ptr = mlx_xpm_file_to_image(mlx, path, &textr->width,
+												&textr->height)))
+	{
+		return (KO);
+	}
+	textr->data = (int *)mlx_get_data_addr(	textr->img_ptr,
+											&textr->bpp,
+											&textr->sl,
+											&textr->endian);
+	return (OK);
 }
 
 void init_bmp(t_bitmap *bmp, t_inf *inf)
@@ -823,52 +846,52 @@ void init_bmp(t_bitmap *bmp, t_inf *inf)
 	bmp->i_h.size = 40;
 	bmp->i_h.width = inf->img.width;
 	bmp->i_h.height = inf->img.height;
-    bmp->i_h.planes = 1;
-    bmp->i_h.bpp = inf->img.bpp;
-    bmp->i_h.compres = 0;
-    bmp->i_h.img_size = 4 * inf->img.width * inf->img.height;
-    bmp->i_h.hor_resol = inf->img.width;
-    bmp->i_h.ver_resol = inf->img.height;
-    bmp->i_h.color_used = 0;
-    bmp->i_h.color_important = 0;
-    bmp->h.sign = "BM";
-    bmp->h.file_size = 14 + bmp->i_h.size + bmp->i_h.img_size;
-    bmp->h.res_byte = 0;
-    bmp->h.offset = 14 + bmp->i_h.size;
-    bmp->data = inf->img.data;
+	bmp->i_h.planes = 1;
+	bmp->i_h.bpp = inf->img.bpp;
+	bmp->i_h.compres = 0;
+	bmp->i_h.img_size = 4 * inf->img.width * inf->img.height;
+	bmp->i_h.hor_resol = inf->img.width;
+	bmp->i_h.ver_resol = inf->img.height;
+	bmp->i_h.color_used = 0;
+	bmp->i_h.color_important = 0;
+	bmp->h.sign = "BM";
+	bmp->h.file_size = 14 + bmp->i_h.size + bmp->i_h.img_size;
+	bmp->h.res_byte = 0;
+	bmp->h.offset = 14 + bmp->i_h.size;
+	bmp->data = inf->img.data;
 }
 
 void write_data(t_bitmap bmp, int sl, int fd)
 {
-    int y;
+	int y;
 
-    y = bmp.i_h.height - 1;
+	y = bmp.i_h.height - 1;
 	while (y >= 0)
 	{
-        write(fd, &bmp.data[y * sl / 4], sl);
+		write(fd, &bmp.data[y * sl / 4], sl);
 		y--;
 	}
 }
 
 void write_bmp(t_bitmap bmp, t_inf *inf, int fd)
 {
-    write(fd, bmp.h.sign, 2);
-    write(fd, &bmp.h.file_size, 4);
-    write(fd, &bmp.h.res_byte, 2);
-    write(fd, &bmp.h.res_byte, 2);
-    write(fd, &bmp.h.offset, 4);
-    write(fd, &bmp.i_h.size, 4);
-    write(fd, &bmp.i_h.width, 4);
-    write(fd, &bmp.i_h.height, 4);
-    write(fd, &bmp.i_h.planes, 2);
-    write(fd, &bmp.i_h.bpp, 2);
-    write(fd, &bmp.i_h.compres, 4);
-    write(fd, &bmp.i_h.img_size, 4);
-    write(fd, &bmp.i_h.hor_resol, 4);
-    write(fd, &bmp.i_h.ver_resol, 4);
-    write(fd, &bmp.i_h.color_used, 4);
-    write(fd, &bmp.i_h.color_important, 4);
-    write_data(bmp, inf->img.sl, fd);
+	write(fd, bmp.h.sign, 2);
+	write(fd, &bmp.h.file_size, 4);
+	write(fd, &bmp.h.res_byte, 2);
+	write(fd, &bmp.h.res_byte, 2);
+	write(fd, &bmp.h.offset, 4);
+	write(fd, &bmp.i_h.size, 4);
+	write(fd, &bmp.i_h.width, 4);
+	write(fd, &bmp.i_h.height, 4);
+	write(fd, &bmp.i_h.planes, 2);
+	write(fd, &bmp.i_h.bpp, 2);
+	write(fd, &bmp.i_h.compres, 4);
+	write(fd, &bmp.i_h.img_size, 4);
+	write(fd, &bmp.i_h.hor_resol, 4);
+	write(fd, &bmp.i_h.ver_resol, 4);
+	write(fd, &bmp.i_h.color_used, 4);
+	write(fd, &bmp.i_h.color_important, 4);
+	write_data(bmp, inf->img.sl, fd);
 }
 
 void save_screen(t_inf *inf)
@@ -878,16 +901,16 @@ void save_screen(t_inf *inf)
 
 	raycast(inf);
 	fd = open("screenshot.bmp", O_CREAT | O_RDWR);
-    init_bmp(&bmp, inf);
-    write_bmp(bmp, inf, fd);
+	init_bmp(&bmp, inf);
+	write_bmp(bmp, inf, fd);
 	close(fd);
 }
 
 int	isspaces(int ch)
 {
-    if (ch == 32 || (ch > 8 && ch < 14))
-            return (1);
-    return (0);
+	if (ch == 32 || (ch > 8 && ch < 14))
+		return (1);
+	return (0);
 }
 
 char *skip_spaces(char *str)
@@ -900,12 +923,12 @@ char *skip_spaces(char *str)
 int	add_textr_wrap(t_inf *inf, t_image *textr, char *path, char *elem)
 {
 	if (path > elem)
-    {
-        if (textr->img_ptr == 0)
-		    return (add_textr(inf->mlx, textr, path));
-        else
-            inf->message = ELEM_REPAET;
-    }
+	{
+		if (textr->img_ptr == 0)
+			return (add_textr(inf->mlx, textr, path));
+		else
+			inf->message = ELEM_REPAET;
+	}
 	return (KO);
 }
 
@@ -976,31 +999,32 @@ int	init_rgb(t_inf *inf, char *elem)
 
 	status = 0;
 	if (elem[0] == 'F')
-    {
-        if (inf->color.floor == 0)
-		    status = add_rgb(&inf->color.floor, elem + 1);
-        else
-        {
-            status = KO;
-            inf->message = ELEM_REPAET;
-        }
-    }
+	{
+		if (inf->color.floor == 0)
+			status = add_rgb(&inf->color.floor, elem + 1);
+		else
+		{
+			status = KO;
+			inf->message = ELEM_REPAET;
+		}
+	}
 	else if (elem[0] == 'C')
-    {
-        if (inf->color.ceil == 0)
-		    status = add_rgb(&inf->color.ceil, elem + 1);
-        else
-        {
-            status = KO;
-            inf->message = ELEM_REPAET;
-        }
-    }
+	{
+		if (inf->color.ceil == 0)
+			status = add_rgb(&inf->color.ceil, elem + 1);
+		else
+		{
+			status = KO;
+			inf->message = ELEM_REPAET;
+		}
+	}
 	if (status == KO && inf->message == 0)
 		inf->message = COLOR_ERROR;
 	return (status);
 }
 
-int	add_resltn(int max_width, int max_height, int *width, int *height, char *resltn)
+int	add_resltn( int max_width, int max_height,
+                int *width, int *height, char *resltn)
 {
 	int i;
 	int num;
@@ -1034,133 +1058,376 @@ int	init_resltn(t_inf *inf, char *elem)
 
 	status = 0;
 	if (elem[0] == 'R')
-    {
-        if (inf->width == 0 && inf->height == 0)
-		    status = add_resltn(inf->max_width, inf->max_height, 
-                                &inf->width, &inf->height, elem + 1);
-        else
-        {
-            status = KO;
-            inf->message = ELEM_REPAET;
-        }
-    }
+	{
+		if (inf->width == 0 && inf->height == 0)
+			status = add_resltn(inf->max_width, inf->max_height, 
+								&inf->width, &inf->height, elem + 1);
+		else
+		{
+			status = KO;
+			inf->message = ELEM_REPAET;
+		}
+	}
 	if (status == KO && inf->message == 0)
 		inf->message = RESOLUTION_ERROR;
 	return (status);
 }
 
-int ismap(char *elem)
+int ismap(char *elem, char *set)
 {
+	int not_only_spaces;
+
+	not_only_spaces = 0;
 	while (*elem)
 	{
-		if (*elem != ' ' && *elem != '0' && *elem != '1' && *elem != '2' &&
-            *elem != 'N' && *elem != 'W' && *elem != 'S' && *elem != 'E')
-        {
+		if (!ft_strchr(set, *elem))
 			return (0);
-        }
+		if (not_only_spaces == 0 && *elem != ' ')
+			not_only_spaces = 1;
 		elem++;
 	}
-	return (1);
+	return (not_only_spaces);
 }
 
 int check_elem(t_inf *inf, char *elem)
 {
-    int status;
+	int status;
 
-    elem = skip_spaces(elem);
+	status = KO;
+	elem = skip_spaces(elem);
 	if (*elem == '\0')
 		status = 0;
-	else if (ismap(elem))
-	{
-		status = KO;
+	else if (ismap(elem, FIRST_LAST_LINE))
 		inf->message = NOT_ENOUGH_CONFIG;
-	}
 	else
-	{
-		status = KO;
 		inf->message = UNKNOWN_ELEM;
-	}
-    return (status);
+	return (status);
 }
 
-int	init_textr_rgb_resltn(char *elem, t_inf *inf)
+int	init_textr_rgb_resltn(char *line, t_inf *inf)
+{
+	int status;
+	char *elem;
+
+	status = 0;
+	if (!(elem = ft_strtrim(line, SPACES)))
+	{
+		status = KO;
+		inf->message = NOT_ENOUGH_MEMORY;
+	}
+	if (status == 0)
+		status = init_textr(inf, elem);
+	if (status == 0)
+		status = init_rgb(inf, elem);
+	if (status == 0)
+		status = init_resltn(inf, elem);
+	if (status == 0)
+		status = check_elem(inf, elem);
+	free_ptr((void **)&elem);
+	return (status);
+}
+
+int get_next_line_wrap(int fd, t_inf *inf)
 {
 	int status;
 
-	if ((status = init_textr(inf, elem)) == OK)
-		return (OK);
-	else if (status != KO && (status = init_rgb(inf, elem)) == OK)
-		return (OK);
-	else if (status != KO && (status = init_resltn(inf, elem)) == OK)
-		return (OK);
-	else if (status != KO)
-        status = check_elem(inf, elem);
+	inf->num_line++;
+	if ((status = get_next_line(fd, &inf->line)) == -1)
+		inf->message = READEING_ERROR;
 	return (status);
 }
 
 int config_parser(int fd, t_inf *inf)
 {
-	int		num;
-	char	*line;
-	char	*elem;
+	int		n;
 	int		status;
 
-	num = 0;
+	n = 0;
 	status = 0;
-	while (num < NUM_ELEMS && get_next_line(fd, &line) > 0 && status != KO)
+	while (status != KO && n < NUM_ELEMS && get_next_line_wrap(fd, inf) > 0)
 	{
-		if (!(elem = ft_strtrim(line, SPACES)))
-		{
-			status = KO;
-			inf->message = NOT_ENOUGH_MEMORY;
-		}
-		else if ((status = init_textr_rgb_resltn(elem, inf)) == OK)
-			num++;
-		free_ptrs((void **)&elem, (void **)&line, (void **)0);
-		inf->map_line++;
+		if ((status = init_textr_rgb_resltn(inf->line, inf)) == OK)
+			n++;
+		free_ptr((void **)&inf->line);
 	}
-	free_ptrs((void **)&elem, (void **)&line, (void **)0);
-	if (status != KO && num < NUM_ELEMS)
+	free_ptr((void **)&inf->line);
+	if (status != KO && n < NUM_ELEMS)
 	{
 		status = KO;
-		inf->message = NOT_ENOUGH_CONFIG;
+		if (inf->message == 0)
+			inf->message = NOT_ENOUGH_CONFIG;
 	}
+	return (status);
+}
+
+int	isemptyline(char *line)
+{
+	while (*line)
+	{
+		if (!isspaces(*line))
+			return (0);
+		line++;
+	}
+	return (1);
+}
+
+int	add_mapline(t_list **maplst, char *line)
+{
+	t_list *curr;
+	
+	if (!(curr = ft_lstnew(line)))
+		return (KO);
+	ft_lstadd_front(maplst, curr);
+	return (OK);
+}
+
+int	get_max(int n1, int n2)
+{
+	if (n1 > n2)
+		return (n1);
+	return (n2);
+}
+
+int	add_mapline_wrap(t_inf *inf, char *set)
+{
+	int status;
+
+	if ((status = ismap(inf->line, set)) == OK)
+	{
+		if ((status = add_mapline(&inf->maplst, inf->line)) == OK)
+		{
+			inf->map_height++;
+			inf->map_width = get_max(inf->map_width, ft_strlen(inf->line));
+			inf->line = 0;
+		}
+		else
+		{
+			inf->message = NOT_ENOUGH_MEMORY;
+			ft_lstclear(&inf->maplst, free);
+		}
+	}
+	return (status);
+}
+
+void print_line(void *line)
+{
+	ft_putendl_fd(line, 1);
+}
+
+int	add_first_mapline(int fd, t_inf *inf)
+{
+	int		status;
+	
+	status = 0;
+	while (status == 0 && (status = get_next_line_wrap(fd, inf)) > 0)
+	{
+		if ((status = add_mapline_wrap(inf, FIRST_LAST_LINE)) == OK)
+			inf->start_map = inf->num_line;
+		if (status == 0 && !isemptyline(inf->line))
+			status = KO;
+		free_ptr((void **)&inf->line);
+	}
+	free_ptr((void **)&inf->line);
+	return (status);
+}
+
+int	skip_empty_lines(int fd, t_inf *inf)
+{
+	int status;
+
+	status = OK;
+	while (status == OK && (status = get_next_line_wrap(fd, inf)) > 0)
+	{
+		status = isemptyline(inf->line) ? OK : KO;
+		free_ptr((void **)&inf->line);
+	}
+	if (status == 0)
+		status = isemptyline(inf->line) ? OK : KO;
+	free_ptr((void **)&inf->line);
+	return (status);
+}
+
+int	add_remain_maplines(int fd, t_inf *inf)
+{
+	int		status;
+
+	status = OK;
+	while (status == OK && (status = get_next_line_wrap(fd, inf)) > 0)
+	{
+		if ((status = add_mapline_wrap(inf, OTHER_LINE)) != 0)
+			free_ptr((void **)&inf->line);
+	}
+	if (status == 0)
+	{
+		status = add_mapline_wrap(inf, FIRST_LAST_LINE);
+		if (status == 0)
+			status = isemptyline(inf->line) ? OK : KO;
+		if (status != KO && !ismap(inf->maplst->content, FIRST_LAST_LINE))
+		{
+			inf->num_line--;
+			status = KO;
+		}
+	}
+	free_ptr((void **)&inf->line);
+	if (status == OK)
+		status = skip_empty_lines(fd, inf);
+	if (status == KO)
+		ft_lstclear(&inf->maplst, free);
+	return (status);
+}
+
+void *ft_lstgetcontnt(t_list *lst, int index)
+{
+	int i;
+	int lst_size;
+
+	i = 0;
+	lst_size = ft_lstsize(lst);
+	while (i < index && i < lst_size - 1)
+	{
+		lst = lst->next;
+		i++;
+	}
+	return (lst->content);
+}
+
+void *get_next_content(t_list *lst)
+{
+	static t_list	*curr;
+
+	if (!curr)
+		curr = lst;
+	else if (curr->next)
+		curr = curr->next;
+	else
+		curr = 0;
+	if (!curr)
+		return (0);
+	return (curr->content);
+}
+
+void	fill_line(int *line, int line_len, char *src)
+{
+	int j;
+	int src_len;
+
+	j = 0;
+	src_len = ft_strlen(src);
+	while (j < line_len)
+	{
+		if (j < src_len)
+			line[j] = src[j] == ' ' ? -1 : src[j] - '0';
+		else
+			line[j] = -1;
+		j++;
+	}
+}
+
+void ft_putarr_fd(int **arr, int h, int w, int fd)
+{
+	int i;
+	int j;
+
+	i = 0;
+	ft_putchar_fd('\n', fd);
+	while (i < h)
+	{
+		j = 0;
+		while (j < w)
+		{
+			if (arr[i][j] >=0 && arr[i][j]  < 10)
+				ft_putchar_fd(' ', fd);
+			ft_putnbr_fd(arr[i][j], fd);
+			j++;
+		}
+		ft_putchar_fd('\n', fd);
+		i++;
+	}
+}
+
+int	maplst_to_table(t_inf *inf)
+{
+	int status;
+	int **map;
+	int i;
+
+	status = OK;
+	if (!(map = (int **)ft_calloc(inf->map_height, sizeof(int *))))
+		status = KO;
+	i = inf->map_height - 1;
+	while (status == OK && i >= 0)
+	{
+		if (!(map[i] = (int *)malloc(inf->map_width * sizeof(int))))
+			status = KO;
+		else
+			fill_line(map[i], inf->map_width, get_next_content(inf->maplst));
+		i--;
+	}
+	if (status == KO)
+	{
+		free_array((void **)map, inf->map_height);
+		inf->message = NOT_ENOUGH_MEMORY;
+	}
+	if (status == OK)
+		inf->map = map;
+	ft_lstclear(&inf->maplst, free);
+	return (status);
+}
+
+// int	check_map(t_inf *inf)
+// {
+// 	return (OK);
+// }
+
+int	map_parser(int fd, t_inf *inf)
+{
+	int status;
+
+	status = add_first_mapline(fd, inf);
+	if (status == OK)
+		status = add_remain_maplines(fd, inf);
+	if (status == OK)
+		status = maplst_to_table(inf);
+	// if (status == OK)
+	// 	status = check_map(inf);
+	if (status == KO && inf->message == 0)
+		inf->message = INVALID_MAP;
 	return (status);
 }
 
 int map_config_parser(t_inf *inf, char *map_path)
 {
-    int		fd;
+	int		fd;
 	int		status;
 
 	if ((fd = open(map_path, O_RDONLY)) == KO)
 		return (KO);
-    ft_putstr_fd("Config elems parsing: ", 1);
+	ft_putstr_fd("Config elems parsing: ", 1);
 	if ((status = config_parser(fd, inf)) != KO)
-    {
+	{
 		ft_putendl_fd("OK", 1);
-        ft_putstr_fd("Map parsing: ", 1);
-		// status = map_parser(fd, inf);
-		ft_putendl_fd("OK", 1);
-    }
+		ft_putstr_fd("Map parsing: ", 1);
+		if ((status = map_parser(fd, inf)) != KO)
+			ft_putendl_fd("OK", 1);
+	}
 	close(fd);
 	return (status);
 }
 
 void print_error_message(int line, char *message)
 {
-    if (line != 0)
-    {
-	    ft_putstr_fd("line ", 1);
-	    ft_putnbr_fd(line, 1);
-	    ft_putstr_fd(" -> ", 1);
-    }
-    ft_putendl_fd(message, 1);
+	if (line != 0)
+	{
+		ft_putstr_fd("line ", 1);
+		ft_putnbr_fd(line, 1);
+		ft_putstr_fd(" -> ", 1);
+	}
+	ft_putendl_fd(message, 1);
 }
 
 int main(int argc, char **argv)
 {
-    t_inf *inf;
+	t_inf *inf;
 	if (!(inf = (t_inf *)ft_calloc(1, sizeof(t_inf))))
 		return (0);
 
@@ -1170,90 +1437,90 @@ int main(int argc, char **argv)
 
 	if (map_config_parser(inf, "../map.cub") == KO)
 	{
-		print_error_message(inf->map_line, inf->message);
+		print_error_message(inf->num_line, inf->message);
 		close_game(inf);
 	}
-	
-    inf->img.img_ptr = mlx_new_image(inf->mlx, inf->width, inf->height);
-    inf->img.height = inf->height;
-    inf->img.width = inf->width;
-    inf->img.data = (int *)mlx_get_data_addr(inf->img.img_ptr,
-                                        &inf->img.bpp,
-                                        &inf->img.sl,
-                                        &inf->img.endian);
+
+	inf->img.img_ptr = mlx_new_image(inf->mlx, inf->width, inf->height);
+	inf->img.height = inf->height;
+	inf->img.width = inf->width;
+	inf->img.data = (int *)mlx_get_data_addr(inf->img.img_ptr,
+											&inf->img.bpp,
+											&inf->img.sl,
+											&inf->img.endian);
 
 
 	inf->dist_buf = (double *)ft_calloc(inf->width, sizeof(double));
 
-    int	map[MAP_HEIGHT][MAP_WIDTH] =
-    {
-        {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-        {1,0,0,0,0,0,0,0,0,2,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
-        {1,0,2,2,0,0,0,0,2,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
-        {1,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-        {1,0,2,0,0,2,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
-        {1,0,0,0,2,2,0,0,0,2,1,1,0,0,0,0,0,1,1,1,0,1,1,1},
-        {1,0,0,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1},
-        {1,1,1,1,0,1,1,1,1,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1},
-        {1,1,0,0,0,0,0,0,1,1,0,1,0,1,0,1,1,1,0,0,0,0,0,1},
-        {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1},
-        {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,0,1,0,1},
-        {1,1,0,0,0,0,0,0,1,1,0,1,0,1,0,1,1,1,1,1,0,1,1,1},
-        {1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,2,2,2,0,2,2,1},
-        {1,1,1,1,0,1,1,1,1,1,1,1,0,0,1,0,1,2,0,0,0,0,0,1},
-        {1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,2,0,0,0,0,0,1},
-        {1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,1},
-        {1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,1,1,1,0,0,0,1,1},
-        {1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,1,0,1,0,1},
-        {1,1,0,0,0,0,0,1,1,1,0,0,0,1,1,0,1,0,1,0,0,0,1,1},
-        {1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,1,0,1,0,1,0,1},
-        {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-        {1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,1,0,1,0,1,0,1},
-        {1,1,0,0,0,0,0,1,1,1,0,0,0,1,1,0,1,0,1,0,0,0,1,1},
-        {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
-    };
+	// int	map[MAP_HEIGHT][MAP_WIDTH] =
+	// {
+	// 	{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+	// 	{1,0,0,0,0,0,0,0,0,2,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
+	// 	{1,0,2,2,0,0,0,0,2,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
+	// 	{1,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+	// 	{1,0,2,0,0,2,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1},
+	// 	{1,0,0,0,2,2,0,0,0,2,1,1,0,0,0,0,0,1,1,1,0,1,1,1},
+	// 	{1,0,0,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1},
+	// 	{1,1,1,1,0,1,1,1,1,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1},
+	// 	{1,1,0,0,0,0,0,0,1,1,0,1,0,1,0,1,1,1,0,0,0,0,0,1},
+	// 	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1},
+	// 	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,0,1,0,1},
+	// 	{1,1,0,0,0,0,0,0,1,1,0,1,0,1,0,1,1,1,1,1,0,1,1,1},
+	// 	{1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,2,2,2,0,2,2,1},
+	// 	{1,1,1,1,0,1,1,1,1,1,1,1,0,0,1,0,1,2,0,0,0,0,0,1},
+	// 	{1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,2,0,0,0,0,0,1},
+	// 	{1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,1},
+	// 	{1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,1,1,1,0,0,0,1,1},
+	// 	{1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,1,0,1,0,1},
+	// 	{1,1,0,0,0,0,0,1,1,1,0,0,0,1,1,0,1,0,1,0,0,0,1,1},
+	// 	{1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,1,0,1,0,1,0,1},
+	// 	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+	// 	{1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,1,0,1,0,1,0,1},
+	// 	{1,1,0,0,0,0,0,1,1,1,0,0,0,1,1,0,1,0,1,0,0,0,1,1},
+	// 	{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
+	// };
 
-    inf->map = fill_map(map);
-    init_sprs(inf);
+	// inf->map = fill_map(map);
+	init_sprs(inf);
     
-    t_view view;
-    view.dir.x = 0.0;
-    view.dir.y = 1.0;
-    view.pos.x = 6.5;
-    view.pos.y = 1.9;
-    view.cam_plane.x = 0.66;
-    view.cam_plane.y = 0;
+	t_view view;
+	view.dir.x = 0.0;
+	view.dir.y = 1.0;
+	view.pos.x = 6.5;
+	view.pos.y = 1.9;
+	view.cam_plane.x = 0.66;
+	view.cam_plane.y = 0;
 
-    inf->view = view;
+	inf->view = view;
 
-    inf->turn.cos_negative = cos(-TURN_SPEED);
-    inf->turn.cos_pozitive = cos(TURN_SPEED);
-    inf->turn.sin_negative = sin(-TURN_SPEED);
-    inf->turn.sin_pozotive = sin(TURN_SPEED);
+	inf->turn.cos_negative = cos(-TURN_SPEED);
+	inf->turn.cos_pozitive = cos(TURN_SPEED);
+	inf->turn.sin_negative = sin(-TURN_SPEED);
+	inf->turn.sin_pozotive = sin(TURN_SPEED);
 
-    inf->event.move_backword = 0;
-    inf->event.move_forawrd = 0;
-    inf->event.move_left = 0;
-    inf->event.move_right = 0;
-    inf->event.turn_left = 0;
-    inf->event.turn_right = 0;
+	inf->event.move_backword = 0;
+	inf->event.move_forawrd = 0;
+	inf->event.move_left = 0;
+	inf->event.move_right = 0;
+	inf->event.turn_left = 0;
+	inf->event.turn_right = 0;
 
-    if (argc != 1)
-    {
+	if (argc != 1)
+	{
 		ft_putstr_fd(argv[0], 1);
-        save_screen(inf);
-        close_game(inf);        
-    }
+		save_screen(inf);
+		close_game(inf);        
+	}
 
-    inf->win = mlx_new_window(inf->mlx, inf->width, inf->height, "cub3d");
+	inf->win = mlx_new_window(inf->mlx, inf->width, inf->height, "cub3d");
 
-    mlx_hook(inf->win, 17, 1L << 17, close_game, inf);
+	mlx_hook(inf->win, 17, 1L << 17, close_game, inf);
 	mlx_hook(inf->win, 2, 1L << 0, button_press, inf);
-    mlx_loop_hook(inf->mlx, event_nadling, inf);
+	mlx_loop_hook(inf->mlx, event_nadling, inf);
 	mlx_hook(inf->win, 3, 1L << 1, button_release, inf);
 	mlx_loop(inf->mlx);
 
-    return 0;
+	return 0;
 }
 // gcc -Werror -Wextra -Wall ../get_next_line/get_next_line.c ../get_next_line/get_next_line_utils.c test.c -L ../minilibx/ -lmlx -L ../libft/ -lft -lm -lX11 -lbsd -lXext -D BUFFER_SIZE=100
 // gcc -Werror -Wextra -Wall test.c -L ../minilibx/ -lmlx -L ../libft/ -lft -lm -lX11 -lbsd -lXext
