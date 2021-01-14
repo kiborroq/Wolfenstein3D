@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
-/*   Updated: 2021/01/13 16:56:38 by kiborroq         ###   ########.fr       */
+/*   Updated: 2021/01/13 23:50:33 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,6 +35,7 @@
 
 #define WALL 1
 #define SPRITE 2
+#define SPACE -1
 
 #define COLORLESS -16777216
 
@@ -1374,10 +1375,56 @@ int	maplst_to_table(t_inf *inf)
 	return (status);
 }
 
-// int	check_map(t_inf *inf)
-// {
-// 	return (OK);
-// }
+int check_mapline(int **map, int i, int width, int *num_pos)
+{
+	int j;
+	
+	if ((map[i][0] != WALL && map[i][0] != SPACE) ||
+		(map[i][width - 1] != WALL && map[i][width - 1] != SPACE))
+		return (KO);
+	j = 0;
+	while (j < width - 1)
+	{
+		if (map[i][j] == SPACE)
+		{
+			if ((map[i][j + 1] != WALL && map[i][j + 1] != SPACE) ||
+				(map[i + 1][j] != WALL && map[i + 1][j] != SPACE))
+				return (KO);
+		}
+		else if (map[i][j] != WALL)
+		{
+			if (map[i][j + 1] == SPACE || map[i + 1][j] == SPACE)
+				return (KO);
+		}
+		if (ft_strchr(START_POS, map[i][j] + '0'))
+			(*num_pos)++;
+		j++;
+	}
+	return (OK);
+}
+
+int	check_map(t_inf *inf)
+{
+	int	status;
+	int i;
+	int	num_pos;
+
+	status = OK;
+	i = 0;
+	num_pos = 0;
+	while (status == OK && i < inf->map_height - 1)
+	{
+		status = check_mapline(inf->map, i, inf->map_width, &num_pos);
+		if (num_pos > 1)
+			status = KO;
+		i++;
+	}
+	if (num_pos == 0)
+		status = KO;
+	if (status == KO)
+		inf->num_line = inf->start_map + i - 1;
+	return (status);
+}
 
 int	map_parser(int fd, t_inf *inf)
 {
@@ -1388,14 +1435,14 @@ int	map_parser(int fd, t_inf *inf)
 		status = add_remain_maplines(fd, inf);
 	if (status == OK)
 		status = maplst_to_table(inf);
-	// if (status == OK)
-	// 	status = check_map(inf);
+	if (status == OK)
+		status = check_map(inf);
 	if (status == KO && inf->message == 0)
 		inf->message = INVALID_MAP;
 	return (status);
 }
 
-int map_config_parser(t_inf *inf, char *map_path)
+int config_map_parser(t_inf *inf, char *map_path)
 {
 	int		fd;
 	int		status;
@@ -1435,7 +1482,7 @@ int main(int argc, char **argv)
 
 	mlx_get_screen_size(inf->mlx, &inf->max_width, &inf->max_height);
 
-	if (map_config_parser(inf, "../map.cub") == KO)
+	if (config_map_parser(inf, "../map.cub") == KO)
 	{
 		print_error_message(inf->num_line, inf->message);
 		close_game(inf);
