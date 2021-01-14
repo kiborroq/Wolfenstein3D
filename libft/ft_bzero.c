@@ -6,13 +6,13 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:08:50 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/02 16:10:45 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 11:40:23 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft.h"
 
-void	ft_bzero(void *buf, size_t n)
+void	ft_bzero(void *mem, size_t n)
 {
-	ft_memset(buf, 0, n);
+	ft_memset(mem, 0, n);
 }

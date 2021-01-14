@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:30:38 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/02 16:31:20 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 11:36:49 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 
 char	*ft_strdup(const char *str)
 {
-	int		str_len;
+	size_t	str_len;
 	char	*str_cpy;
 
 	str_len = ft_strlen(str);

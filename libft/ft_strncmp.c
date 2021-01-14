@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:38:47 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/02 16:39:08 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 13:21:26 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,7 @@ int	ft_strncmp(const char *str1, const char *str2, size_t n)
 {
 	unsigned char	*str1_cmp;
 	unsigned char	*str2_cmp;
-	size_t			diff;
+	int				diff;
 
 	str1_cmp = (unsigned char *)str1;
 	str2_cmp = (unsigned char *)str2;

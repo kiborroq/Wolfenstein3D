@@ -6,33 +6,11 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:19:50 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/02 16:22:27 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 12:18:59 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft.h"
-
-static char	*min_int(void)
-{
-	int		len;
-	char	*min;
-	char	*num_str;
-	int		i;
-
-	len = 11;
-	min = MIN_INT_STR;
-	num_str = (char *)malloc((len + 1) * sizeof(char));
-	if (!num_str)
-		return (0);
-	i = 0;
-	while (i < len)
-	{
-		num_str[i] = min[i];
-		i++;
-	}
-	num_str[i] = 0;
-	return (num_str);
-}
 
 static char	*convert(int sep, int len, int n)
 {
@@ -82,9 +60,25 @@ static char	*other_int(int n)
 	return (convert(sep, len, n));
 }
 
+static char	*min_int(void)
+{
+	char *min_int;
+
+	min_int = ft_strdup(MIN_INT_STR);
+	if (!min_int)
+		return (0);
+	return (min_int);
+}
+
 char		*ft_itoa(int n)
 {
+	char *n_str;
+
 	if (n == MIN_INT)
-		return (min_int());
-	return (other_int(n));
+		n_str = min_int();
+	else
+		n_str = other_int(n);
+	if (!n_str)
+		return (0);
+	return (n_str);
 }

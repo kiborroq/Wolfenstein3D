@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:14:02 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/02 16:14:49 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 12:44:10 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,16 +14,14 @@
 
 void	*ft_calloc(size_t nmemb, size_t size)
 {
-	void *buf;
+	void *mem;
 
 	if (!nmemb || !size)
-	{
-		nmemb = 1;
-		size = 1;
-	}
-	buf = (void *)malloc(nmemb * size);
-	if (!buf)
+		mem = malloc(1);
+	else
+		mem = malloc(nmemb * size);
+	if (!mem)
 		return (0);
-	ft_bzero(buf, nmemb * size);
-	return (buf);
+	ft_bzero(mem, nmemb * size);
+	return (mem);
 }

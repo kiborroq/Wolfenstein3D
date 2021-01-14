@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:39:26 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/02 16:39:42 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 11:50:56 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,13 +23,14 @@ char	*ft_strnstr(const char *big, const char *little, size_t n)
 	big_len = ft_strlen(big);
 	if (lit_len > big_len || big_len == 0)
 		return (0);
-	while (*big && n-- > 0)
+	while (*big && n > 0)
 	{
-		if (lit_len > n + 1)
+		if (lit_len > n)
 			return (0);
 		if (*big == *little)
 			if (!ft_strncmp(big, little, lit_len))
 				return ((char *)big);
+		n--;
 		big++;
 	}
 	return (0);

@@ -6,11 +6,11 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:28:00 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/02 16:28:38 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 11:16:37 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <unistd.h>
+#include "libft.h"
 
 void	ft_putchar_fd(char c, int fd)
 {

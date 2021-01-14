@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:40:51 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/03 15:01:16 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 11:58:01 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,14 +14,11 @@
 
 static int	isset(char ch, const char *set)
 {
-	size_t i;
-
-	i = 0;
-	while (set[i])
+	while (*set)
 	{
-		if (set[i] == ch)
+		if (*set == ch)
 			return (1);
-		i++;
+		set++;
 	}
 	return (0);
 }

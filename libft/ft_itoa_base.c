@@ -1,30 +1,42 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_lstclear.c                                      :+:      :+:    :+:   */
+/*   ft_itoa_base.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2020/11/04 11:03:41 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/17 13:55:42 by kiborroq         ###   ########.fr       */
+/*   Created: 2020/11/17 16:46:17 by kiborroq          #+#    #+#             */
+/*   Updated: 2020/11/17 16:46:56 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft.h"
 
-void	ft_lstclear(t_list **lst, void (*del)(void *))
+char	*ft_itoa_base(unsigned long n, char *base)
 {
-	t_list *lst_tmp;
-	t_list *del_elem;
+	unsigned long	base_len;
+	unsigned long	sep;
+	unsigned long	len;
+	char			*num;
+	unsigned long	i;
 
-	if (!lst || !del)
-		return ;
-	lst_tmp = *lst;
-	while (lst_tmp)
+	base_len = ft_strlen(base);
+	sep = 1;
+	len = 1;
+	while (n / sep > base_len - 1)
 	{
-		del_elem = lst_tmp;
-		lst_tmp = lst_tmp->next;
-		ft_lstdelone(del_elem, del);
+		sep *= base_len;
+		len++;
 	}
-	*lst = 0;
+	if (!(num = ft_calloc(len + 1, sizeof(char))))
+		return (0);
+	i = 0;
+	while (i < len)
+	{
+		num[i] = base[n / sep];
+		n %= sep;
+		sep /= base_len;
+		i++;
+	}
+	return (num);
 }

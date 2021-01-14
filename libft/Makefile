@@ -5,7 +5,7 @@
 #                                                     +:+ +:+         +:+      #
 #    By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
-#    Created: 2020/10/31 11:14:47 by gagustin          #+#    #+#              #
+#    Created: 2020/10/31 11:14:47 by kiborroq          #+#    #+#              #
 #    Updated: 2020/11/02 16:57:10 by kiborroq         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
@@ -19,6 +19,7 @@ SRCS		= ft_memset.c\
 			ft_memcmp.c\
 			ft_strlen.c\
 			ft_strdup.c\
+			ft_strndup.c \
 			ft_strlcat.c\
 			ft_strchr.c\
 			ft_strrchr.c\
@@ -30,6 +31,7 @@ SRCS		= ft_memset.c\
 			ft_isalnum.c\
 			ft_isascii.c\
 			ft_isprint.c\
+			ft_isspace.c \
 			ft_toupper.c\
 			ft_tolower.c\
 			ft_substr.c\
@@ -37,6 +39,8 @@ SRCS		= ft_memset.c\
 			ft_strtrim.c\
 			ft_split.c\
 			ft_itoa.c\
+			ft_itoa_base.c \
+			ft_uitoa.c \
 			ft_putchar_fd.c\
 			ft_putstr_fd.c\
 			ft_putendl_fd.c\

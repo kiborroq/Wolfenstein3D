@@ -6,13 +6,13 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:42:10 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/02 16:42:29 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 12:07:09 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 int	ft_tolower(int ch)
 {
-	if (ch > 'A' - 1 && ch < 'Z' + 1)
+	if (ch >= 'A' && ch <= 'Z')
 		return (ch - 'A' + 'a');
 	return (ch);
 }

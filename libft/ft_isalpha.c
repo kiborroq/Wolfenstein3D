@@ -6,15 +6,15 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:16:24 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/02 16:16:52 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 12:02:52 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 int	ft_isalpha(int ch)
 {
-	if (ch > 64 && ch < 91)
-		return (1);
-	if (ch > 96 && ch < 123)
+	if (ch >= 'a' && ch <= 'z')
+		return (-1);
+	if (ch >= 'A' && ch <= 'Z')
 		return (1);
 	return (0);
 }

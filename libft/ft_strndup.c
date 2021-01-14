@@ -1,18 +1,29 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_isascii.c                                       :+:      :+:    :+:   */
+/*   ft_strndup.c                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2020/11/02 16:17:16 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/17 12:04:10 by kiborroq         ###   ########.fr       */
+/*   Created: 2020/11/17 16:34:01 by kiborroq          #+#    #+#             */
+/*   Updated: 2020/11/17 16:34:52 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-int	ft_isascii(int ch)
+#include "libft.h"
+
+char	*ft_strndup(const char *str, int n)
 {
-	if (ch >= 0 && ch <= 127)
-		return (1);
-	return (0);
+	int		str_len;
+	char	*str_cpy;
+
+	str_len = ft_strlen(str);
+	if (str_len < n)
+		n = str_len;
+	str_cpy = (char *)malloc((n + 1) * sizeof(char));
+	if (!str_cpy)
+		return (0);
+	ft_memcpy(str_cpy, str, n);
+	str_cpy[n] = 0;
+	return (str_cpy);
 }

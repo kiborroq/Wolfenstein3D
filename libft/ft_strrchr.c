@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:40:01 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/04 10:55:42 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 11:53:29 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,6 @@ char	*ft_strrchr(const char *str, int ch)
 		return ((char *)(&str[n]));
 	while (n-- > 0)
 		if (str[n] == ch)
-			return ((char *)&str[n]);
+			return ((char *)(str + n));
 	return (0);
 }

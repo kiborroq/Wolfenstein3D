@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:51:47 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/03 15:01:48 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 14:09:11 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,7 +73,7 @@ char				**fill_strs(char **strs, char *s, char c,
 		strs[j] = fill_word(&s[i], c);
 		if (!strs[j])
 		{
-			free_strs(strs, j + 1);
+			free_strs(strs, j);
 			return (0);
 		}
 		if (s[i])

@@ -6,18 +6,11 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:11:32 by kiborroq          #+#    #+#             */
-/*   Updated: 2021/01/10 00:55:24 by kiborroq         ###   ########.fr       */
+/*   Updated: 2021/01/14 09:20:45 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft.h"
-
-static int	ft_isspace(int ch)
-{
-	if (ch == 32 || (ch > 8 && ch < 14))
-		return (1);
-	return (0);
-}
 
 int			ft_atoi(const char *str)
 {

@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:53:57 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/03 15:03:37 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 11:37:13 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 
 void	ft_putstr_fd(char *s, int fd)
 {
-	unsigned int i;
+	size_t i;
 
 	if (!s)
 		return ;

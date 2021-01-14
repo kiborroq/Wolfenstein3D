@@ -6,7 +6,7 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:22:53 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/02 16:23:18 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 13:24:04 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,8 +18,8 @@ void	*ft_memccpy(void *dest, const void *src, int ch, size_t n)
 	unsigned char *src_tmp;
 	unsigned char ch_tmp;
 
-	dest_tmp = (unsigned char*)dest;
-	src_tmp = (unsigned char*)src;
+	dest_tmp = (unsigned char *)dest;
+	src_tmp = (unsigned char *)src;
 	ch_tmp = (unsigned char)ch;
 	while (n-- > 0)
 	{

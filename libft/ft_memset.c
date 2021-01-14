@@ -6,18 +6,18 @@
 /*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/02 16:27:16 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/11/02 16:27:39 by kiborroq         ###   ########.fr       */
+/*   Updated: 2020/12/17 13:21:19 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft.h"
 
-void	*ft_memset(void *buf, int ch, size_t n)
+void	*ft_memset(void *mem, int ch, size_t n)
 {
-	unsigned char *buf_tmp;
+	unsigned char *mem_tmp;
 
-	buf_tmp = (unsigned char *)buf;
+	mem_tmp = (unsigned char *)mem;
 	while (n-- > 0)
-		*buf_tmp++ = ch;
-	return (buf);
+		*mem_tmp++ = ch;
+	return (mem);
 }
