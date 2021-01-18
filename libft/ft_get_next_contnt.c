@@ -1,31 +1,28 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_strjoin.c                                       :+:      :+:    :+:   */
+/*   ft_get_next_contnt.c                               :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2020/11/02 16:32:02 by kiborroq          #+#    #+#             */
-/*   Updated: 2021/01/14 23:00:30 by kiborroq         ###   ########.fr       */
+/*   Created: 2020/12/15 23:10:31 by kiborroq          #+#    #+#             */
+/*   Updated: 2021/01/14 23:20:29 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft.h"
 
-char	*ft_strjoin(char const *s1, char const *s2)
+void	*ft_get_next_contnt(t_list *lst)
 {
-	size_t	s1_len;
-	size_t	s2_len;
-	char	*concat;
+	static t_list	*curr;
 
-	if (!s1 && !s2)
+	if (!curr)
+		curr = lst;
+	else if (curr->next)
+		curr = curr->next;
+	else
+		curr = 0;
+	if (!curr)
 		return (0);
-	s1_len = ft_strlen(s1);
-	s2_len = ft_strlen(s2);
-	concat = (char *)malloc((s1_len + s2_len + 1) * sizeof(char));
-	if (!concat)
-		return (0);
-	ft_memcpy(concat, s1, s1_len);
-	ft_memcpy(concat + s1_len, s2, s2_len + 1);
-	return (concat);
+	return (curr->content);
 }

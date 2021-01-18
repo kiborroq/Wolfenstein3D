@@ -3,96 +3,106 @@
 /*                                                        :::      ::::::::   */
 /*   main.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kiborroq@student.42.fr <kiborroq>          +#+  +:+       +#+        */
+/*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2020/12/07 12:39:08 by kiborroq          #+#    #+#             */
-/*   Updated: 2020/12/23 23:02:54 by kiborroq@st      ###   ########.fr       */
+/*   Created: 2020/12/11 10:59:31 by kiborroq          #+#    #+#             */
+/*   Updated: 2021/01/15 15:15:51 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "minilibx/mlx.h"
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "../incs/cub3d.h"
 
-typedef struct  s_data {
-    void        *img;
-    char        *addr;
-    int         bits_per_pixel;
-    int         line_length;
-    int         endian;
-}               t_data;
-
-void            my_mlx_pixel_put(t_data *data, int x, int y, int color)
+int	raycast(t_inf *inf)
 {
-    char    *dst;
+	int screen_x;
 
-    dst = data->addr + (y * data->line_length + x * (data->bits_per_pixel / 8));
-    *(unsigned int*)dst = color;
+	screen_x = 0;
+	while (screen_x < inf->width)
+	{
+		init_ray(inf, screen_x);
+		calculate_step(inf);
+		calculate_dist_to_wall(inf, screen_x);
+		calculate_wall_range(inf);
+		draw_stripe(inf, screen_x);
+		screen_x++;
+	}
+	draw_sprs(inf);
+	return (1);
 }
 
-int             main(void)
+int	close_game(t_inf *inf)
 {
-    void    *mlx;
-    void    *mlx_win;
-    t_data  img;
-
-    mlx = mlx_init();
-    mlx_win = mlx_new_window(mlx, 1920, 1080, "Hello world!");
-    img.img = mlx_new_image(mlx, 1920, 1080);
-    img.addr = mlx_get_data_addr(img.img, &img.bits_per_pixel, &img.line_length,
-                                 &img.endian);
-    for (int i = 200; i < 1720; i++) {
-        for (int j = 200; j < 880; j++) {
-            my_mlx_pixel_put(&img, i, j, 0x00FF0000);
-        }
-    }
-    mlx_put_image_to_window(mlx, mlx_win, img.img, 0, 0);
-    mlx_loop(mlx);
+	print_error_message(inf);
+	if (inf)
+	{
+		destroy_mlx_elems(inf);
+		ft_free_arr((void **)inf->map, inf->map_height);
+		ft_freeptr((void **)&inf->sprs);
+		ft_freeptr((void **)&inf->dist_buf);
+		ft_freeptr((void **)&inf);
+	}
+	exit(1);
+	return (0);
 }
 
-// #define WIDTH 1920
-// #define HEIGHT 1080 
+int	save_screen(t_inf *inf)
+{
+	int			fd;
+	t_bitmap	bmp;
 
-// int main(int argc, char *argv[])
-// {
-//     int width[1];
-//     int height[1];
+	raycast(inf);
+	if ((fd = open(SCREENSHOT, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU)) == KO)
+	{
+		inf->message = SAVE_ERROR;
+		return (KO);
+	}
+	init_bmp(&bmp, inf);
+	write_bmp(bmp, inf, fd);
+	close(fd);
+	return (OK);
+}
 
-//     width[0] = 64;
-//     height[0] = 64;
-//     void *new_mlx = mlx_init();
-//     void *new_win = mlx_new_window(new_mlx, WIDTH, HEIGHT, "Test");
-//     void *new_img = mlx_xpm_file_to_image(new_mlx, argv[1], width, height);
-//     if (!new_img)
-//     {
-//         write(1, "ERROR\n", 6);
-//         exit(0);
-//     }
-//     int x;
-//     int y = 0;
+int	init_game(char *map_path, t_inf **inf)
+{
+	int status;
 
+	status = init_inf_mlx(inf);
+	status = status == OK ? config_map_parser(*inf, map_path) : KO;
+	status = status == OK ? init_img(*inf) : KO;
+	status = status == OK ? init_sprs(*inf) : KO;
+	if (status == OK)
+	{
+		init_view(*inf);
+		init_speed(*inf);
+	}
+	else if (*inf != 0 && (*inf)->message == 0)
+		(*inf)->message = NOT_ENOUGH_MEMORY;
+	return (status);
+}
 
+int	main(int argc, char **argv)
+{
+	t_inf	*inf;
 
-//     while (y < HEIGHT + 63)
-//     {
-//         x = 0;
-//         while (x < WIDTH + 63)
-//         {
-//             mlx_put_image_to_window(new_mlx, new_win, new_img, x, y);
-//             x += 64;
-//         }
-//         y += 64;
-//     }
-
-//     printf("%s\n", mlx_get_data_addr(new_img, 0, 0, 0));
-
-//     mlx_loop(new_mlx);
-//     mlx_destroy_image(new_mlx, new_img);
-//     mlx_clear_window(new_mlx, new_win);
-//     mlx_destroy_window(new_mlx, new_win);
-//     return 0;
-// }
-
-
-// gcc -Werror -Wextra -Wall main.c -L minilibx/ -lmlx -lm -lbsd -lX11 -lXext
+	if (argc < 2 || argc > 3 || ft_strrncmp(argv[1], EXTENTN, 4) ||
+		(argc == 3 && ft_strcmp(argv[2], SAVE_FLAG)))
+	{
+		ft_putendl_fd(ARG_ERROR, 1);
+		return (0);
+	}
+	if (init_game(argv[1], &inf) == KO)
+		close_game(inf);
+	if (argc == 3)
+	{
+		save_screen(inf);
+		close_game(inf);
+	}
+	if (!(inf->win = mlx_new_window(inf->mlx, inf->width, inf->height, NAME)))
+		close_game(inf);
+	mlx_hook(inf->win, 17, 1L << 17, close_game, inf);
+	mlx_hook(inf->win, 2, 1L << 0, button_press, inf);
+	mlx_loop_hook(inf->mlx, event_nadling, inf);
+	mlx_hook(inf->win, 3, 1L << 1, button_release, inf);
+	mlx_loop(inf->mlx);
+	return (0);
+}

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   libft.h                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kiborroq <kiborroq@student.42.fr>          +#+  +:+       +#+        */
+/*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/04 11:08:03 by kiborroq          #+#    #+#             */
-/*   Updated: 2021/01/14 09:21:13 by kiborroq         ###   ########.fr       */
+/*   Updated: 2021/01/15 13:26:58 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,7 +48,9 @@ size_t				ft_strlcat(char *dest, const char *src, size_t dest_size);
 char				*ft_strchr(const char *str, int ch);
 char				*ft_strrchr(const char *str, int ch);
 char				*ft_strnstr(const char *big, const char *little, size_t n);
+int					ft_strcmp(const char *str1, const char *str2);
 int					ft_strncmp(const char *str1, const char *str2, size_t n);
+int					ft_strrncmp(const char *s1, const char *s2, size_t n);
 int					ft_atoi(const char *str);
 int					ft_isalpha(int ch);
 int					ft_isdigit(int ch);
@@ -56,11 +58,13 @@ int					ft_isalnum(int ch);
 int					ft_isascii(int ch);
 int					ft_isprint(int ch);
 int					ft_isspace(int ch);
+int					ft_isemptyline(char *line);
 int					ft_toupper(int ch);
 int					ft_tolower(int ch);
 void				*ft_calloc(size_t nmemb, size_t size);
 char				*ft_strdup(const char *str);
 char				*ft_strndup(const char *str, int n);
+int					ft_max(int n1, int n2);
 
 /*
 **Part 2 - Additional functions
@@ -78,6 +82,12 @@ void				ft_putchar_fd(char c, int fd);
 void				ft_putstr_fd(char *s, int fd);
 void				ft_putendl_fd(char *s, int fd);
 void				ft_putnbr_fd(int n, int fd);
+void				ft_putarr_fd(int **arr, int h, int w, int fd);
+char				*ft_skip_spaces(char *str);
+char				*ft_skip_digits(char *str);
+int					ft_numdig(int **array, int height, int width, int dig);
+void				ft_freeptr(void **ptr);
+void				ft_free_arr(void **array, int height);
 
 /*
 **Part 3 - Bonus functions
@@ -91,6 +101,8 @@ void				ft_lstadd_back(t_list **lst, t_list *new);
 void				ft_lstdelone(t_list *lst, void (*del)(void*));
 void				ft_lstclear(t_list **lst, void (*del)(void *));
 void				ft_lstiter(t_list *lst, void (*f)(void *));
+void				*ft_get_next_contnt(t_list *lst);
+void				*ft_get_contnt(t_list *lst, int index);
 t_list				*ft_lstmap(t_list *lst, void *(*f)(void *),
 								void (*del)(void *));
 

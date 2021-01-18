@@ -1,31 +1,31 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_strjoin.c                                       :+:      :+:    :+:   */
+/*   ft_free_arr.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2020/11/02 16:32:02 by kiborroq          #+#    #+#             */
-/*   Updated: 2021/01/14 23:00:30 by kiborroq         ###   ########.fr       */
+/*   Created: 2020/12/15 23:10:31 by kiborroq          #+#    #+#             */
+/*   Updated: 2021/01/14 23:46:46 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft.h"
 
-char	*ft_strjoin(char const *s1, char const *s2)
+void	ft_free_arr(void **array, int height)
 {
-	size_t	s1_len;
-	size_t	s2_len;
-	char	*concat;
+	int i;
 
-	if (!s1 && !s2)
-		return (0);
-	s1_len = ft_strlen(s1);
-	s2_len = ft_strlen(s2);
-	concat = (char *)malloc((s1_len + s2_len + 1) * sizeof(char));
-	if (!concat)
-		return (0);
-	ft_memcpy(concat, s1, s1_len);
-	ft_memcpy(concat + s1_len, s2, s2_len + 1);
-	return (concat);
+	i = 0;
+	if (array)
+	{
+		while (i < height)
+		{
+			if (array[i])
+				free(array[i]);
+			i++;
+		}
+		free(array);
+		array = 0;
+	}
 }

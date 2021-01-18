@@ -1,31 +1,27 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_strjoin.c                                       :+:      :+:    :+:   */
+/*   ft_strcmp.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: kiborroq <kiborroq@kiborroq.42.fr>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2020/11/02 16:32:02 by kiborroq          #+#    #+#             */
-/*   Updated: 2021/01/14 23:00:30 by kiborroq         ###   ########.fr       */
+/*   Created: 2021/01/14 14:33:39 by kiborroq          #+#    #+#             */
+/*   Updated: 2021/01/14 14:36:04 by kiborroq         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft.h"
 
-char	*ft_strjoin(char const *s1, char const *s2)
+int	ft_strcmp(const char *str1, const char *str2)
 {
-	size_t	s1_len;
-	size_t	s2_len;
-	char	*concat;
+	unsigned char	*str1_cmp;
+	unsigned char	*str2_cmp;
+	int				diff;
 
-	if (!s1 && !s2)
-		return (0);
-	s1_len = ft_strlen(s1);
-	s2_len = ft_strlen(s2);
-	concat = (char *)malloc((s1_len + s2_len + 1) * sizeof(char));
-	if (!concat)
-		return (0);
-	ft_memcpy(concat, s1, s1_len);
-	ft_memcpy(concat + s1_len, s2, s2_len + 1);
-	return (concat);
+	str1_cmp = (unsigned char *)str1;
+	str2_cmp = (unsigned char *)str2;
+	diff = 0;
+	while (diff == 0 && (*str1_cmp || *str2_cmp))
+		diff = *str1_cmp++ - *str2_cmp++;
+	return (diff);
 }
