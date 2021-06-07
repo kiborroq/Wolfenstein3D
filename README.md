@@ -5,4 +5,4 @@
 
 Расширение конфигурационного файла: .cub
 
-Собрать проект: make && ./Wolfenstein3D
+Собрать проект: make && ./Wolfenstein3D map.cub
